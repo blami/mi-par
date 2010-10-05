@@ -17,26 +17,57 @@
 
 
 /**
+ * Vypsat strukturu ulohy ve formatu pro parsovani.
+ */
+void dump_serialize(FILE *f, task_t *t) {
+	assert(t);
+	assert(f);
+	int i;
+
+	// zakladni udaje
+	fprintf(f, "%d\n", t->n);
+	fprintf(f, "%d\n", t->k);
+	fprintf(f, "%d\n", t->q);
+
+	// pozice figurek ve tvaru X:Y;
+	for(i = 0; i < t->k; i++) {
+		fprintf(f, "%d:%d;", t->B[i].x, t->B[i].y);
+	}
+	fprintf(f,"\n");
+
+	// penalizace
+	for(i = 0; i < (t->n * t->n); i++) {
+		fprintf(f, "%d;", t->P[i]);
+	}
+	fprintf(f,"\n");
+}
+
+/**
  * Vypsat strukturu ulohy v lidsky citelne podobe.
  */
-void dump_print_task(FILE *f, task_t *t) {
+void dump_task(FILE *f, task_t *t) {
 	assert(t);
 	assert(f);
 	coords_t c;
 	int i;
 
+	// zakladni udaje
 	fprintf(f, "n=%d\n"
 		"k=%d\n"
 		"q=%d\n",
 		t->n, t->k, t->q);
 
-	dump_print_board(f, t);
+	// vypsat obraz sachovnice
+	fprintf(f, "S=\n");
+	dump_board(f, t);
 
-	// vypsat penalizace
+	// vypsat penalizace v matici jako sachovnici
 	fprintf(f, "P=\n");
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
+			// spocitat index v t->P
 			i = utils_map(c, t->n);
+
 			fprintf(f, "%d", t->P[i]);
 
 			if(c.x != t->n - 1)
@@ -49,12 +80,11 @@ void dump_print_task(FILE *f, task_t *t) {
 /**
  * Vypsat pouze stav sachovnice v lidsky citelne podobe.
  */
-void dump_print_board(FILE *f, task_t *t) {
+void dump_board(FILE *f, task_t *t) {
 	assert(t);
 	assert(f);
 	coords_t c;
 
-	fprintf(f, "B=\n");
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
 			if(task_get_pos(t, c) == 0)
@@ -64,5 +94,4 @@ void dump_print_board(FILE *f, task_t *t) {
 		}
 		fprintf(f, "\n");
 	}
-
 }

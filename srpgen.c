@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
 	task_setup(t);
 
 	for(i = 0; i < n*n; i++) {
-		t->P[i] = (rand() % p + 1);
+		t->P[i] = ((rand() % p) + (rand() % 1));
 	}
 
 	// provedeni nahodnych tahu nahodnymi jezdci
@@ -114,7 +114,11 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	dump_print_task(stdout, t);
+	/*
+	dump_task(stdout, t);
+	printf("\n---\n");
+	*/
+	dump_serialize(stdout, t);
 
 	task_destroy(t);
 

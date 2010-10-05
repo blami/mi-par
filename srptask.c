@@ -186,9 +186,11 @@ int task_move(task_t *t, const int i, dir_t d)  {
 	// zkusit tahnout
 	if(task_set_pos(t, i, c)) {
 		// TODO penalizace a historie
+		/*
 		printf("tah %d %d:%d -> %d:%d\n", i, c_old.x, c_old.y,
 			c.x, c.y);
 		dump_print_board(stdout, t);
+		*/
 		return 1;
 	}
 

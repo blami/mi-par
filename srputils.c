@@ -8,6 +8,8 @@
 /*
  * srputils: pomocne funkce
  */
+#include <malloc.h>
+#include <stdlib.h>
 #include "srputils.h"
 
 
@@ -28,4 +30,18 @@ inline coords_t utils_unmap(const int i, const int n) {
 	c.x = i % n;
 	c.y = i / n;
 	return c;
+}
+
+/**
+ * Alokacni wrapper.
+ */
+void * utils_malloc(size_t s)
+{
+	void* p;
+	if(!(p = malloc(s))) {
+		fprintf(stderr, "chyba: nelze alokovat pamet o velikosti %d", s);
+		exit(EXIT_FAILURE);
+	}
+
+	return p;
 }

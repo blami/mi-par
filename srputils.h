@@ -19,5 +19,6 @@ typedef struct {
 
 inline int      utils_map(const coords_t, const int n);
 inline coords_t utils_unmap(const int i, const int n);
+void *          utils_malloc(size_t s);
 
 #endif /* __SRPUTILS_H */

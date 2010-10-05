@@ -3,15 +3,18 @@ CFLAGS=-g
 # Release
 #CFLAGS=
 
-srpgen: srpgen.c srputils.o srpfile.o
-	gcc ${CFLAGS} -o srpgen srpgen.c srputils.o srpfile.o
+srpgen: srpgen.c srputils.o srptask.o srpdump.o
+	gcc $(CFLAGS) -o srpgen srpgen.c srputils.o srptask.o srpdump.o
 
-srpfile.o: srpfile.c srpfile.h
-	gcc ${CFLAGS} -c srpfile.c
+srptask.o: srptask.c srptask.h
+	gcc $(CFLAGS) -c srptask.c
 
 srputils.o: srputils.c srputils.h
-	gcc ${CFLAGS} -c srputils.c
+	gcc $(CFLAGS) -c srputils.c
+
+srpdump.o: srpdump.c srpdump.h
+	gcc $(CFLAGS) -c srpdump.c
 
 clean:
 	-rm -f *.o
-	-rm srp-nompi srpgen
+	-rm srpgen

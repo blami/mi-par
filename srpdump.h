@@ -12,8 +12,9 @@
 #define __SRPDUMP_H
 
 
-void    dump_task(FILE *f, task_t *t);
-void    dump_board(FILE *f, task_t *t);
-void    dump_serialize(FILE *f, task_t *t);
+void        dump_task(FILE *f, task_t *t);
+void        dump_board(FILE *f, task_t *t);
+void        dump_serialize(FILE *f, task_t *t);
+task_t *    dump_unserialize(FILE *f);
 
 #endif /* __SRPDUMP_H */

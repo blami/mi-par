@@ -187,8 +187,10 @@ int task_move(task_t *t, const unsigned int i, const dir_t d,
 	if(task_set_pos(t, i, c)) {
 		// vratime tah pres parametr pro ucely historie tahu
 		if(m != NULL) {
-			m[FROM]->x = c_old.x;   m[FROM]->y = c_old.y;
-			m[TO]->x = c.x;         m[TO]->y = c.y;
+			(*m)[TO].x = c.x;
+			(*m)[TO].y = c.y;
+			(*m)[FROM].x = c_old.x;
+			(*m)[FROM].y = c_old.y;
 		}
 		// zvysime penalizaci
 		if(p != NULL) {

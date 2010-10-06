@@ -101,8 +101,6 @@ task_t * dump_unserialize(FILE *f) {
 		t->P[i] = dump_read_int(f);
 	}
 
-	dump_task(stdout, t);
-
 	return t;
 }
 

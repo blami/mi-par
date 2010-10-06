@@ -13,6 +13,7 @@
 #include <assert.h>
 #include "srputils.h"
 #include "srptask.h"
+#include "srphist.h"
 #include "srpdump.h"
 
 
@@ -43,7 +44,7 @@ void dump_serialize(FILE *f, task_t *t) {
 }
 
 /**
- * Nacte jedno N; cislo z aktualni pozice v souboru.
+ * Nacist jedno N; cislo z aktualni pozice v souboru.
  */
 int dump_read_int(FILE *f) {
 	assert(f);
@@ -58,7 +59,7 @@ int dump_read_int(FILE *f) {
 }
 
 /**
- * Nacte dvojici cisel z aktualni pozice v souboru.
+ * Nacist X:Y; dvojici cisel z aktualni pozice v souboru.
  */
 coords_t dump_read_coords(FILE *f) {
 	assert(f);
@@ -103,7 +104,6 @@ task_t * dump_unserialize(FILE *f) {
 
 	return t;
 }
-
 
 /**
  * Vypsat strukturu ulohy v lidsky citelne podobe.
@@ -167,4 +167,28 @@ void dump_board(FILE *f, task_t *t) {
 		}
 		fprintf(f, "\n");
 	}
+}
+
+/**
+ * Vypsat historii tahu.
+ */
+void dump_hist(FILE *f, hist_t *h) {
+	assert(h);
+	assert(f);
+	int i;
+
+	fprintf(f, "Tahy:");
+
+	if(h->l == 0) {
+		fprintf(f, "-nic-\n");
+		return;
+	}
+
+	for(i = 0; i < h->l; i++) {
+		fprintf(f, "%d:%d->%d:%d", h->h[i][FROM].x, h->h[i][FROM].y,
+			h->h[i][TO].x, h->h[i][TO].y);
+		if(i != h->l - 1)
+			fprintf(f, ",");
+	}
+	fprintf(f, "\n");
 }

@@ -15,6 +15,7 @@
 #include <time.h>
 #include <string.h>
 #include "srputils.h"
+#include "srphist.h"
 #include "srptask.h"
 #include "srpdump.h"
 
@@ -24,6 +25,8 @@ unsigned int k = -1;
 unsigned int q = -1;
 unsigned int p = 10;
 task_t* t;
+hist_t* h;
+move_t m;
 char* filename = NULL;
 int verbose = 0;
 
@@ -73,9 +76,12 @@ void parse_args(int argc, char **argv)
 				"Pouziti: srpgen [prepinace] [<soubor>]\n"
 				" -n ARG        strana sachovnice (ARG>=5)\n"
 				" -k ARG        pocet jezdcu (n<=ARG<=(n*(n+1)/2)\n"
-				" -q ARG        pocet nahodnych zpetnych tahu (n<=ARG<=(n*n))\n"
-				" -p ARG        maximalni hodnota penalizace na policku (0<=ARG<=100)\n"
-				" -v            vypsat ulohu na obrazovku v lidsky citelne forme\n"
+				" -q ARG        pocet nahodnych zpetnych tahu  "
+					"(n<=ARG<=(n*n))\n"
+				" -p ARG        maximalni hodnota penalizace na policku "
+					"(0<=ARG<=100)\n"
+				" -v            vypsat ulohu na obrazovku v lidsky citelne "
+					"forme\n"
 				" -h            zobrazi tuto napovedu\n\n"
 				"Pokud chybi <soubor> program vypise vystup na stdout.\n\n");
 			exit(EXIT_SUCCESS);
@@ -102,9 +108,9 @@ void parse_args(int argc, char **argv)
  * Vstupni bod programu.
  */
 int main(int argc, char **argv) {
-	int i;
-	int qq;
-	int ki, di;
+	unsigned int i;
+	unsigned int qq;
+	unsigned int ki, di;
 	FILE *f = stdout;
 
 	parse_args(argc, argv);
@@ -116,6 +122,8 @@ int main(int argc, char **argv) {
 	t = task_init(n, k, q);
 	task_setup(t);
 
+	h = hist_init(NULL);
+
 	for(i = 0; i < n*n; i++) {
 		t->P[i] = ((rand() % p) + (rand() % 1));
 	}
@@ -126,26 +134,32 @@ int main(int argc, char **argv) {
 		ki = rand() % t->k;         // vyber figurky
 		di = rand() % LLD;          // vyber smeru
 
-		if(task_move(t, ki, di) == 1) {
-			// tah byl uspesny
+		if(task_move(t, ki, di, &m, NULL) == 1) {
+			hist_move(h, m);
 			qq--;
 		}
 	}
 
 	if(filename != NULL) {
 		if(!(f = fopen(filename, "w"))) {
-			fprintf(stderr, "chyba: nelze zapisovat do souboru `%s'", filename);
+			fprintf(stderr, "chyba: nelze zapisovat do souboru `%s'",
+				filename);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	dump_serialize(f, t);
-	if(verbose)
+	if(verbose) {
 		dump_task(stdout, t);
+		dump_hist(stdout, h);
+	}
 
-	if(f != stdout)
+	if(filename != NULL) {
+		free(filename);
 		fclose(f);
+	}
 
+	hist_destroy(h);
 	task_destroy(t);
 
 	return EXIT_SUCCESS;

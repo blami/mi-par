@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include "srputils.h"
+#include "srphist.h"
 #include "srptask.h"
 
 
@@ -22,7 +23,7 @@
 task_t * task_init(const unsigned int n, const unsigned int k,
 	const unsigned int q) {
 	task_t *t = NULL;
-	int i;
+	unsigned int i;
 
 	t = (task_t *)utils_malloc(sizeof(task_t));
 	t->n = n;
@@ -41,11 +42,9 @@ task_t * task_init(const unsigned int n, const unsigned int k,
 }
 
 /**
- * Finalizace ulohy.
+ * Destrukce ulohy.
  */
 void task_destroy(task_t *t) {
-	int i;
-
 	if(!t) return;
 
 	if(t->P)
@@ -61,10 +60,10 @@ void task_destroy(task_t *t) {
  * Odstraneni figurek ze sachovnice.
  * \returns     pocet figurek odstranenych ze sachovnice
  */
-int task_clean(task_t *t) {
+unsigned int task_clean(task_t *t) {
 	assert(t);
-	int c = 0;
-	int i;
+	unsigned int c = 0;
+	unsigned int i;
 
 	for(i = 0; i < t->k; i++) {
 		if(t->B[i].x > -1 && t->B[i].y > -1)
@@ -79,12 +78,12 @@ int task_clean(task_t *t) {
 /**
  * Umisteni figurek do horniho trojuhelniku sachovnice.
  */
-int task_setup(task_t *t) {
+void task_setup(task_t *t) {
 	assert(t);
 	unsigned int x = 0, y = 0; // horni levy roh
-	int edge = t->n;
-	int count = t->k;
-	int i;
+	unsigned int edge = t->n;
+	unsigned int count = t->k;
+	unsigned int i;
 
 	task_clean(t);
 
@@ -106,7 +105,7 @@ int task_setup(task_t *t) {
 int task_get_pos(task_t *t, const coords_t c) {
 	assert(t);
 	assert(c.x < t->n && c.y < t->n);
-	int i;
+	unsigned int i;
 
 	for(i = 0; i < t->k; i++) {
 		if(t->B[i].x == c.x && t->B[i].y == c.y)
@@ -118,9 +117,10 @@ int task_get_pos(task_t *t, const coords_t c) {
 
 /**
  * Nastaveni pozice X,Y na sachovnici. Kontroluje obsazenost ciloveho pole.
+ * \param i     index figurky
  * \returns     1 pokud doslo k presunu, 0 bylo-li pole obsazeno
  */
-int task_set_pos(task_t *t, const int i, const coords_t c) {
+int task_set_pos(task_t *t, const unsigned int i, const coords_t c) {
 	assert(t);
 	assert(i < t->k);
 
@@ -140,13 +140,13 @@ int task_set_pos(task_t *t, const int i, const coords_t c) {
  * Regulerni tah figurkou jezdce po sachovnici.
  * \returns     1 tah byl spravny (proveden), 0 tah byl nespravny (neproveden)
  */
-// TODO sem zadratovat jeste ukladani do historie tahu pres argument + pocitani 
-// penale - tj. asi v ramci historie tahu
-int task_move(task_t *t, const int i, dir_t d)  {
+int task_move(task_t *t, const unsigned int i, const dir_t d,
+	move_t *m, unsigned int *p)  {
 	assert(t);
 	assert(i < t->k);
 	assert(t->B[i].x >= 0 && t->B[i].y >= 0); // kun musi byt umisten
 	assert(0 < d < 8);
+	int j;
 
 	coords_t c, c_old; // nove souradnice
 
@@ -185,12 +185,17 @@ int task_move(task_t *t, const int i, dir_t d)  {
 
 	// zkusit tahnout
 	if(task_set_pos(t, i, c)) {
-		// TODO penalizace a historie
-		/*
-		printf("tah %d %d:%d -> %d:%d\n", i, c_old.x, c_old.y,
-			c.x, c.y);
-		dump_print_board(stdout, t);
-		*/
+		// vratime tah pres parametr pro ucely historie tahu
+		if(m != NULL) {
+			m[FROM]->x = c_old.x;   m[FROM]->y = c_old.y;
+			m[TO]->x = c.x;         m[TO]->y = c.y;
+		}
+		// zvysime penalizaci
+		if(p != NULL) {
+			j = utils_map(c, t->n);
+			*p += t->P[j];
+		}
+
 		return 1;
 	}
 

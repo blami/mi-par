@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
+#include <string.h>
 #include "srputils.h"
 #include "srptask.h"
 #include "srpdump.h"
@@ -23,6 +24,8 @@ unsigned int k = -1;
 unsigned int q = -1;
 unsigned int p = 10;
 task_t* t;
+char* filename = NULL;
+int verbose = 0;
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -30,7 +33,7 @@ task_t* t;
 void parse_args(int argc, char **argv)
 {
 	int a;
-	while((a = getopt(argc, argv, "n:k:q:p:h")) != -1){
+	while((a = getopt(argc, argv, "n:k:q:p:vh")) != -1){
 		switch(a) {
 		case 'n':
 			n = atoi(optarg);
@@ -62,21 +65,35 @@ void parse_args(int argc, char **argv)
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case 'v':
+			verbose = 1;
+			break;
 		case 'h':
 			printf("srpgen: generator nahodnych reseni pro ulohu SRP\n\n"
-				"Pouziti:\n"
-				" -n ARG        strana sachovnice (n>=5)\n"
-				" -k ARG        pocet jezdcu (n<=k<=(n*(n+1)/2)\n"
-				" -q ARG        pocet nahodnych zpetnych tahu (n<=q<=(n*n))\n"
-				" -p ARG        maximalni hodnota penalizace na policku (0<=p<=100)\n"
-				" -h            zobrazi tuto napovedu\n\n");
+				"Pouziti: srpgen [prepinace] [<soubor>]\n"
+				" -n ARG        strana sachovnice (ARG>=5)\n"
+				" -k ARG        pocet jezdcu (n<=ARG<=(n*(n+1)/2)\n"
+				" -q ARG        pocet nahodnych zpetnych tahu (n<=ARG<=(n*n))\n"
+				" -p ARG        maximalni hodnota penalizace na policku (0<=ARG<=100)\n"
+				" -v            vypsat ulohu na obrazovku v lidsky citelne forme\n"
+				" -h            zobrazi tuto napovedu\n\n"
+				"Pokud chybi <soubor> program vypise vystup na stdout.\n\n");
 			exit(EXIT_SUCCESS);
 			break;
 		}
 	}
 
+	if(optind < argc) {
+		if(optind + 1 < argc) {
+			fprintf(stderr, "chyba: neocekavany argument\n");
+			exit(EXIT_FAILURE);
+		}
+
+		filename = strndup(argv[optind], strlen(argv[optind]));
+	}
+
 	if(n == -1 || k == -1 || q == -1) {
-		fprintf(stderr, "chyba: povinne parametry jsou -n,-k,-q.\n");
+		fprintf(stderr, "chyba: povinne parametry jsou -n,-k a -q\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -88,6 +105,7 @@ int main(int argc, char **argv) {
 	int i;
 	int qq;
 	int ki, di;
+	FILE *f = stdout;
 
 	parse_args(argc, argv);
 
@@ -105,7 +123,7 @@ int main(int argc, char **argv) {
 	// provedeni nahodnych tahu nahodnymi jezdci
 	qq = q;
 	while(qq != 0) {
-		ki = rand() % t->k;         // vyber kone
+		ki = rand() % t->k;         // vyber figurky
 		di = rand() % LLD;          // vyber smeru
 
 		if(task_move(t, ki, di) == 1) {
@@ -114,11 +132,19 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	/*
-	dump_task(stdout, t);
-	printf("\n---\n");
-	*/
-	dump_serialize(stdout, t);
+	if(filename != NULL) {
+		if(!(f = fopen(filename, "w"))) {
+			fprintf(stderr, "chyba: nelze zapisovat do souboru `%s'", filename);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	dump_serialize(f, t);
+	if(verbose)
+		dump_task(stdout, t);
+
+	if(f != stdout)
+		fclose(f);
 
 	task_destroy(t);
 

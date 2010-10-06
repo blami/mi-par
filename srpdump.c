@@ -24,23 +24,88 @@ void dump_serialize(FILE *f, task_t *t) {
 	assert(f);
 	int i;
 
-	// zakladni udaje
-	fprintf(f, "%d\n", t->n);
-	fprintf(f, "%d\n", t->k);
-	fprintf(f, "%d\n", t->q);
+	// zakladni udaje ve tvaru N;
+	fprintf(f, "%d;\n", t->n);
+	fprintf(f, "%d;\n", t->k);
+	fprintf(f, "%d;\n", t->q);
 
-	// pozice figurek ve tvaru X:Y;
+	// pozice figurek ve tvaru X1:Y1;X2:Y2;...Xn:Yn;
 	for(i = 0; i < t->k; i++) {
 		fprintf(f, "%d:%d;", t->B[i].x, t->B[i].y);
 	}
 	fprintf(f,"\n");
 
-	// penalizace
+	// penalizace ve tvaru N1;N2;...Nn;
 	for(i = 0; i < (t->n * t->n); i++) {
 		fprintf(f, "%d;", t->P[i]);
 	}
 	fprintf(f,"\n");
 }
+
+/**
+ * Nacte jedno N; cislo z aktualni pozice v souboru.
+ */
+int dump_read_int(FILE *f) {
+	assert(f);
+	int v;
+
+	if(!fscanf(f, "%d;", &v)) {
+		fprintf(stderr, "chyba: neplatna vstupni data (int)\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return v;
+}
+
+/**
+ * Nacte dvojici cisel z aktualni pozice v souboru.
+ */
+coords_t dump_read_coords(FILE *f) {
+	assert(f);
+	coords_t c;
+	int st;
+
+	if(!fscanf(f, "%d:%d;", &c.x, &c.y)) {
+		fprintf(stderr, "chyba: neplatna vstupni data (coords_t)\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return c;
+}
+
+/**
+ * Nacist serializovana data ulohy a na jejich zaklade
+ * vytvorit instanci.
+ */
+task_t * dump_unserialize(FILE *f) {
+	assert(f);
+	int n;
+	int k;
+	int q;
+	task_t *t;
+	int i;
+
+	n = dump_read_int(f);
+	k = dump_read_int(f);
+	q = dump_read_int(f);
+
+	t = task_init(n, k, q);
+
+	// nacist souradnice figurek
+	for(i = 0; i < t->k; i++) {
+		t->B[i] = dump_read_coords(f);
+	}
+
+	// nacist penalizace poli
+	for(i = 0; i < (t->n*t->n); i++) {
+		t->P[i] = dump_read_int(f);
+	}
+
+	dump_task(stdout, t);
+
+	return t;
+}
+
 
 /**
  * Vypsat strukturu ulohy v lidsky citelne podobe.
@@ -56,6 +121,16 @@ void dump_task(FILE *f, task_t *t) {
 		"k=%d\n"
 		"q=%d\n",
 		t->n, t->k, t->q);
+
+	// vypsat souradnice figurek
+	fprintf(f, "B=");
+	for(i = 0; i < t->k; i++) {
+		fprintf(f, "%d:%d", t->B[i].x, t->B[i].y);
+
+		if(i != t->k - 1)
+			fprintf(f, ",");
+	}
+	fprintf(f, "\n");
 
 	// vypsat obraz sachovnice
 	fprintf(f, "S=\n");

@@ -1,10 +1,15 @@
 # Debugging
-CFLAGS=-g
+#CFLAGS=-g
 # Release
-#CFLAGS=
+CFLAGS=
 
-srpgen: srpgen.c srputils.o srptask.o srpdump.o
-	gcc $(CFLAGS) -o srpgen srpgen.c srputils.o srptask.o srpdump.o
+all: srpgen srpnompi
+
+srpnompi: srpnompi.c srputils.o srptask.o srpdump.o srphist.o
+	gcc $(CFLAGS) -o srpnompi srpnompi.c srputils.c srptask.o srpdump.o srphist.o
+
+srpgen: srpgen.c srputils.o srptask.o srpdump.o srphist.o
+	gcc $(CFLAGS) -o srpgen srpgen.c srputils.o srptask.o srpdump.o srphist.o
 
 srptask.o: srptask.c srptask.h
 	gcc $(CFLAGS) -c srptask.c
@@ -15,6 +20,9 @@ srputils.o: srputils.c srputils.h
 srpdump.o: srpdump.c srpdump.h
 	gcc $(CFLAGS) -c srpdump.c
 
+srphist.o: srphist.c srphist.h
+	gcc $(CFLAGS) -c srphist.c
+
 clean:
 	-rm -f *.o
-	-rm srpgen
+	-rm srpgen srpnompi srpmpi

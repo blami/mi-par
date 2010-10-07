@@ -39,9 +39,26 @@ void * utils_malloc(size_t s)
 {
 	void* p;
 	if(!(p = malloc(s))) {
-		fprintf(stderr, "chyba: nelze alokovat pamet o velikosti %d", s);
+		fprintf(stderr, "chyba: nelze alokovat virtualni pamet o  velikosti "
+			"%dB", s);
 		exit(EXIT_FAILURE);
 	}
 
 	return p;
 }
+
+/**
+ * Realokacni wrapper.
+ */
+void * utils_realloc(void *ptr, size_t s)
+{
+	void* p;
+	if(!(p = realloc(ptr, s))) {
+		fprintf(stderr, "chyba: nelze realokovat virtualni pamet o velikosti "
+			"%dB", s);
+		exit(EXIT_FAILURE);
+	}
+
+	return p;
+}
+

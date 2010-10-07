@@ -100,15 +100,21 @@ void task_setup(task_t *t) {
 
 /**
  * Kontrola pozice X,Y na sachovnici.
+ * \param t     zadani ulohy
+ * \param B     sachovnice (pro NULL se pouzije primo t->B)
  * \returns     1 pokud je pozice obsazena, 0 pokud ne
  */
-int task_get_pos(task_t *t, const coords_t c) {
+int task_get_pos(task_t *t, coords_t *B, const coords_t c) {
 	assert(t);
 	assert(c.x < t->n && c.y < t->n);
 	unsigned int i;
+	coords_t *BB = t->B;
+
+	if(B != NULL)
+		BB = B;
 
 	for(i = 0; i < t->k; i++) {
-		if(t->B[i].x == c.x && t->B[i].y == c.y)
+		if(BB[i].x == c.x && BB[i].y == c.y)
 			return 1;
 	}
 
@@ -117,19 +123,27 @@ int task_get_pos(task_t *t, const coords_t c) {
 
 /**
  * Nastaveni pozice X,Y na sachovnici. Kontroluje obsazenost ciloveho pole.
- * \param i     index figurky
+ * \param t     zadani ulohy
+ * \param B     sachovnice (pro NULL se pouzije primo t->B)
+ * \param i     index figurky jejiz pozice ma byt nastavena
+ * \param c     souradnice cilove pozice figurky
  * \returns     1 pokud doslo k presunu, 0 bylo-li pole obsazeno
  */
-int task_set_pos(task_t *t, const unsigned int i, const coords_t c) {
+int task_set_pos(task_t *t, coords_t *B, const unsigned int i, 
+	const coords_t c) {
 	assert(t);
 	assert(i < t->k);
+	coords_t *BB = t->B;
+
+	if(B != NULL)
+		BB = B;
 
 	// tah mimo nemuze byt aserce, protoze tah mimo je validni pokus
 	if(c.x < 0 || c.x >= t->n || c.y < 0 || c.y >= t->n)
 		return 0;
 
-	if(task_get_pos(t, c) == 0) {
-		t->B[i].x = c.x; t->B[i].y = c.y;
+	if(task_get_pos(t, B, c) == 0) {
+		BB[i].x = c.x; BB[i].y = c.y;
 		return 1;
 	}
 
@@ -138,45 +152,57 @@ int task_set_pos(task_t *t, const unsigned int i, const coords_t c) {
 
 /**
  * Regulerni tah figurkou jezdce po sachovnici.
+ * \param t     zadani ulohy
+ * \param B     sachovnice (pro NULL se pouzije primo t->B)
+ * \param i     index figurky se kterou ma byt proveden tah
+ * \param d     smer tahu (\see srptask.h)
+ * \param m     struktura tahu, ktera ma byt naplnena v pripade, ze tah je
+ *      platny a byl proveden
+ * \param p     celkova penalizace, kam ma byt pripoctena dilci penalizace za
+ *      platny provedeny tah
  * \returns     1 tah byl spravny (proveden), 0 tah byl nespravny (neproveden)
  */
-int task_move(task_t *t, const unsigned int i, const dir_t d,
+int task_move(task_t *t, coords_t *B, const unsigned int i, const dir_t d,
 	move_t *m, unsigned int *p)  {
 	assert(t);
 	assert(i < t->k);
-	assert(t->B[i].x >= 0 && t->B[i].y >= 0); // kun musi byt umisten
 	assert(0 < d < 8);
 	int j;
+	coords_t* BB = t->B;
 
-	coords_t c, c_old; // nove souradnice
+	if(B != NULL)
+		BB = B;
+	assert(BB[i].x >= 0 && BB[i].y >= 0); // kun musi byt umisten
 
-	c_old.x = t->B[i].x;
-	c_old.y = t->B[i].y;
+	coords_t c, c_old; // nove a puvodni souradnice
+
+	c_old.x = BB[i].x;
+	c_old.y = BB[i].y;
 
 	switch(d) {
 	case RUU:
-		c.x = t->B[i].x + 1; c.y = t->B[i].y - 2;
+		c.x = BB[i].x + 1; c.y = BB[i].y - 2;
 		break;
 	case RRU:
-		c.x = t->B[i].x + 2; c.y = t->B[i].y - 1;
+		c.x = BB[i].x + 2; c.y = BB[i].y - 1;
 		break;
 	case RDD:
-		c.x = t->B[i].x + 1; c.y = t->B[i].y + 2;
+		c.x = BB[i].x + 1; c.y = BB[i].y + 2;
 		break;
 	case RRD:
-		c.x = t->B[i].x + 2; c.y = t->B[i].y + 1;
+		c.x = BB[i].x + 2; c.y = BB[i].y + 1;
 		break;
 	case LUU:
-		c.x = t->B[i].x - 1; c.y = t->B[i].y - 2;
+		c.x = BB[i].x - 1; c.y = BB[i].y - 2;
 		break;
 	case LLU:
-		c.x = t->B[i].x - 2; c.y = t->B[i].y - 1;
+		c.x = BB[i].x - 2; c.y = BB[i].y - 1;
 		break;
 	case LDD:
-		c.x = t->B[i].x - 1; c.y = t->B[i].y + 2;
+		c.x = BB[i].x - 1; c.y = BB[i].y + 2;
 		break;
 	case LLD:
-		c.x = t->B[i].x - 2; c.y = t->B[i].y + 1;
+		c.x = BB[i].x - 2; c.y = BB[i].y + 1;
 		break;
 	default:
 		// neznamy smer tahu, prazdny tah
@@ -184,7 +210,7 @@ int task_move(task_t *t, const unsigned int i, const dir_t d,
 	}
 
 	// zkusit tahnout
-	if(task_set_pos(t, i, c)) {
+	if(task_set_pos(t, B, i, c)) {
 		// vratime tah pres parametr pro ucely historie tahu
 		if(m != NULL) {
 			(*m)[TO].x = c.x;

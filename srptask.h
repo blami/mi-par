@@ -10,6 +10,7 @@
  */
 #ifndef __SRPTASK_H
 #define __SRPTASK_H
+#include "srputils.h"   /* coords_t */
 #include "srphist.h"    /* move_t */
 
 
@@ -44,10 +45,10 @@ task_t *        task_init(const unsigned int n, const unsigned int k,
 void            task_destroy(task_t *t);
 unsigned int    task_clean(task_t *t);
 void            task_setup(task_t *t);
-int             task_get_pos(task_t *t, const coords_t c);
-int             task_set_pos(task_t *t, const unsigned int i,
+int             task_get_pos(task_t *t, coords_t *B, const coords_t c);
+int             task_set_pos(task_t *t, coords_t *B, const unsigned int i,
 	const coords_t c);
-int             task_move(task_t *t, const unsigned int i,
+int             task_move(task_t *t, coords_t *B, const unsigned int i,
 	const dir_t d, move_t *m, unsigned int *p);
 
 #endif /* __SRPPROBLEM_H */

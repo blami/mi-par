@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 		ki = rand() % t->k;         // vyber figurky
 		di = rand() % LLD;          // vyber smeru
 
-		if(task_move(t, ki, di, &m, NULL) == 1) {
+		if(task_move(t, NULL, ki, di, &m, NULL) == 1) {
 			hist_move(h, m);
 			qq--;
 		}

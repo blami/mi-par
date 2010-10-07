@@ -160,7 +160,7 @@ void dump_board(FILE *f, task_t *t) {
 
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
-			if(task_get_pos(t, c) == 0)
+			if(task_get_pos(t, NULL, c) == 0)
 				fprintf(f, ".");
 			else
 				fprintf(f, "#");

@@ -10,9 +10,8 @@
  */
 #ifndef __SRPTASK_H
 #define __SRPTASK_H
-#include "srputils.h"   /* coords_t */
-#include "srphist.h"    /* move_t */
-
+#include "srphist.h"
+#include "srputils.h"
 
 /**
  * Smery tahu jezdcem.
@@ -30,7 +29,7 @@ typedef enum {
 } dir_t;
 
 /**
- * Struktura problemu.
+ * Struktura ulohy.
  */
 typedef struct {
 	unsigned int n;     // strana sachovnice
@@ -40,15 +39,21 @@ typedef struct {
 	unsigned int *P;    // pole penalizaci
 } task_t;
 
-task_t *        task_init(const unsigned int n, const unsigned int k,
-	const unsigned int q);
-void            task_destroy(task_t *t);
-unsigned int    task_clean(task_t *t);
-void            task_setup(task_t *t);
-int             task_get_pos(task_t *t, coords_t *B, const coords_t c);
-int             task_set_pos(task_t *t, coords_t *B, const unsigned int i,
-	const coords_t c);
-int             task_move(task_t *t, coords_t *B, const unsigned int i,
-	const dir_t d, move_t *m, unsigned int *p, int dry_run);
+extern task_t *             task_init(const unsigned int n,
+	const unsigned int k, const unsigned int q);
+
+extern void                 task_destroy(task_t *t);
+extern unsigned int         task_clean(task_t *t);
+extern void                 task_setup(task_t *t);
+extern int                  task_get_pos(task_t *t, coords_t *B,const coords_t c);
+
+extern int                  task_set_pos(task_t *t, coords_t *B,
+	const unsigned int i, const coords_t c);
+
+extern int                  task_move(task_t *t, coords_t *B, 
+	const unsigned int i, const dir_t d, move_t *m, unsigned int *p,
+	int dry_run);
+
+extern inline coords_t *    task_bdcpy(const task_t *t, coords_t *B);
 
 #endif /* __SRPPROBLEM_H */

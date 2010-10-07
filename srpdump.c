@@ -11,9 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "srputils.h"
-#include "srptask.h"
-#include "srphist.h"
 #include "srpdump.h"
 
 
@@ -132,7 +129,7 @@ void dump_task(FILE *f, task_t *t) {
 
 	// vypsat obraz sachovnice
 	fprintf(f, "S=\n");
-	dump_board(f, t);
+	dump_board(f, t, NULL);
 
 	// vypsat penalizace v matici jako sachovnici
 	fprintf(f, "P=\n");
@@ -153,14 +150,14 @@ void dump_task(FILE *f, task_t *t) {
 /**
  * Vypsat pouze stav sachovnice v lidsky citelne podobe.
  */
-void dump_board(FILE *f, task_t *t) {
+void dump_board(FILE *f, task_t *t, coords_t *B) {
 	assert(t);
 	assert(f);
 	coords_t c;
 
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
-			if(task_get_pos(t, NULL, c) == 0)
+			if(task_get_pos(t, B, c) == 0)
 				fprintf(f, ".");
 			else
 				fprintf(f, "#");

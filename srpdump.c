@@ -174,7 +174,7 @@ void dump_hist(FILE *f, hist_t *h) {
 	assert(f);
 	int i;
 
-	fprintf(f, "Tahy:");
+	fprintf(f, "Tahy: ");
 
 	if(h->l == 0) {
 		fprintf(f, "-nic-\n");

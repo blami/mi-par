@@ -306,6 +306,8 @@ int main(int argc, char **argv) {
 		dump_hist(stdout, solution->h);
 	}
 
+	stack_item_destroy(solution);
+
 	stack_destroy(s);
 	task_destroy(t);
 	task_destroy(tf);

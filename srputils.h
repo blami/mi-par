@@ -11,15 +11,14 @@
 #ifndef __SRPUTILS_H
 #define __SRPUTILS_H
 
-
 typedef struct {
 	int x;
 	int y;
 } coords_t;
 
-inline int      utils_map(const coords_t, const int n);
-inline coords_t utils_unmap(const int i, const int n);
-void *          utils_malloc(size_t s);
-void *          utils_realloc(void *ptr, size_t s);
+extern inline int          utils_map(const coords_t c, const int n);
+extern inline coords_t     utils_unmap(const int i, const int n);
+extern void *              utils_malloc(size_t s);
+extern void *              utils_realloc(void *ptr, size_t s);
 
 #endif /* __SRPUTILS_H */

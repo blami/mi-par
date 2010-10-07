@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include "srptask.h"
 #include "srputils.h"
 #include "srphist.h"
-#include "srptask.h"
 
 
 /**
@@ -141,16 +141,8 @@ int task_set_pos(task_t *t, coords_t *B, const unsigned int i,
 	if(B != NULL)
 		BB = B;
 
-	// tah mimo nemuze byt aserce, protoze tah mimo je validni pokus
-	if(c.x < 0 || c.x >= t->n || c.y < 0 || c.y >= t->n)
-		return 0;
-
-	if(task_get_pos(t, B, c) == 0) {
 	BB[i].x = c.x; BB[i].y = c.y;
 	return 1;
-	}
-
-	return 0;
 }
 
 /**
@@ -233,11 +225,29 @@ int task_move(task_t *t, coords_t *B, const unsigned int i, const dir_t d,
 	}
 
 	if(dry_run != 1) {
-		if(task_set_pos(t, B, i, c)) {
-			return 1;
-		}
+		task_set_pos(t, B, i, c);
+	}
 
-	return 0;
+	return 1;
 }
 
+/**
+ * Zkopiruje pole souradnic figurek na sachovnici.
+ */
+inline coords_t * task_bdcpy(const task_t *t, coords_t *B) {
+	assert(t);
+	coords_t *Bd = NULL;
+	coords_t *BB = t->B;
+	int i;
+
+	if(B != NULL)
+		BB = B;
+
+	Bd = (coords_t *)utils_malloc(sizeof(coords_t) * t->k);
+	for(i = 0; i < t->k; i++) {
+		Bd[i] = BB[i];
+	}
+
+	return Bd;
+}
 

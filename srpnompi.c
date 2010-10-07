@@ -96,18 +96,18 @@ int compare(task_t *tr, coords_t *B) {
 	assert(B);
 	int i;
 
-	if(verbose) printf("Porovnani uzlu s resenim... ");
+	if(verbose) printf("reseni: porovnani... ");
 
 	// projdu vsechny figurky v referencnim reseni a zjistim jestli jsou
 	// jejich pozice obsazeny i na porovnavane sachovnici obsazeny
 	for(i = 0; i < t->k; i++) {
 		if(!task_get_pos(tr, B, tr->B[i])) {
-			if(verbose) printf("NE\n");
+			if(verbose) printf("neshoda\n");
 			return 0;
 		}
 	}
 
-	if(verbose) printf("ANO\n");
+	if(verbose) printf("shoda\n");
 	return 1;
 }
 
@@ -125,7 +125,7 @@ int expand() {
 	int dir;
 	stack_item_t its;   // novy stav (vznikly expanzi)
 
-	if(verbose) printf("Expanze stavu do vsech podreseni...\n ");
+	if(verbose) printf("reseni: expanze...\n");
 
 	// vyndani uzlu ze zasobniku
 	it = stack_pop(s);
@@ -143,7 +143,8 @@ int expand() {
 	if(solution != NULL) 
 		if(it->p >= solution->p) {
 			if(verbose)
-				printf("Orez: penalizace je vyssi nez u dosavadniho reseni\n", t->q);
+				printf("reseni: orez, p=%d je horsi nez nejlepsi p=%d\n", 
+					it->p, solution->p);
 			stack_item_destroy(it);
 			return;
 		}
@@ -152,7 +153,7 @@ int expand() {
 	// FIXME zeptat se p.Simecka jestli je tohle legalni
 	if(it->d == t->q) {
 		if(verbose)
-			printf("Omezeni: hloubka q=%d byla dosazena\n", t->q);
+			printf("reseni: dosazeno q=%d\n", t->q);
 		stack_item_destroy(it);
 		return;
 	}
@@ -192,7 +193,7 @@ int expand() {
 		}
 	}
 
-	if(verbose) printf("Konec expanze\n");
+	if(verbose) printf("reseni: konec expanze\n");
 	stack_item_destroy(it);
 	return 0;
 }
@@ -223,7 +224,7 @@ void solve() {
 	assert(t);
 	cc = 0;
 
-	printf("Hledani reseni...\n");
+	printf("reseni: hledani...\n");
 
 	// pocatecni stav
 	stack_item_t it;
@@ -236,32 +237,32 @@ void solve() {
 
 	while(!stack_empty(s)) {
 		if(verbose)
-			printf("Prubeh: hloubka: %d, prohledane stavy: %d\n",
+			printf("reseni: hloubka: %d, prohledane stavy: %d\n",
 				stack_top(s)->d, cc);
 
 		if(compare(tf, stack_top(s)->B)) {
 			// na zasobniku je reseni ulohy
-			printf("Nove reseni: p=%d\n", stack_top(s)->p);
-			dump_hist(stdout, stack_top(s)->h);
+			printf("reseni: nalezeno p=%d", stack_top(s)->p);
 
 			if(solution == NULL) {
 				solution = stack_pop(s);
-				printf("Stav: prvni reseni.\n");
+				printf(" <prvni>\n");
 			} else {
 				if(solution->p > stack_top(s)->p) {
-					free(solution);
+					stack_item_destroy(solution);
 					solution = stack_pop(s);
-					printf("Stav: prubezne nejlepsi reseni.\n");
+					printf(" <prub.nejlepsi>\n");
+				} else {
+					printf(" <horsi o=%d>\n",
+						stack_top(s)->p - solution->p);
 				}
-				printf("Stav: horsi nez prubezne nejlepsi reseni o: %d\n",
-					stack_top(s)->p - solution->p);
 			}
+			dump_hist(stdout, stack_top(s)->h);
+
 		}
 		if(stack_empty(s))
 			break;
 
-		// zde MUSI byt t, jsou v nem ulozeny penalizace a maximalni hloubka
-		// stromu reseni
 		expand();
 	}
 }
@@ -288,25 +289,26 @@ int main(int argc, char **argv) {
 	// referencni reseni pro porovnavani
 	tf = task_init(t->n, t->k, t->q);
 	task_setup(tf);
-//	dump_board(stdout, t, tf->B);
 
 	solve();
 
 	// vypsat statistiky
-	printf("Uloha:\n");
+	printf("-----\n");
+	printf("uloha:\n");
 	dump_task(stdout,t);
 
-	printf("Stavu prozkoumano: %d\n", cc);
+	printf("prohledano stavu: %d\n", cc);
 
 	if(!solution) {
-		printf("Nejlepsi reseni: nenalezeno!\n");
+		printf("reseni: nenalezeno!\n");
 	} else {
-		printf("Nejlepsi reseni: p=%d\n", solution->p);
+		printf("reseni: p=%d\n", solution->p);
 		dump_hist(stdout, solution->h);
 	}
 
 	stack_destroy(s);
 	task_destroy(t);
+	task_destroy(tf);
 
 	return EXIT_SUCCESS;
 }

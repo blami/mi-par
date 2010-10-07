@@ -15,9 +15,8 @@
 #include <time.h>
 #include <string.h>
 #include "srputils.h"
-#include "srphist.h"
-#include "srptask.h"
 #include "srpdump.h"
+#include "srphist.h"
 
 
 unsigned int n = -1;
@@ -40,33 +39,15 @@ void parse_args(int argc, char **argv)
 		switch(a) {
 		case 'n':
 			n = atoi(optarg);
-			if(n < 5) {
-				fprintf(stderr, "chyba: musi platit n >= 5\n");
-				exit(EXIT_FAILURE);
-			}
 			break;
 		case 'k':
 			k = atoi(optarg);
-			if(n > k || k > (n*(n+1)/2)) {
-				fprintf(stderr, "chyba: musi platit %d <= k <= %d\n",
-					n, (n*(n+1)/2));
-				exit(EXIT_FAILURE);
-			}
 			break;
 		case 'q':
 			q = atoi(optarg);
-			if(n > q || q > (n*n)) {
-				fprintf(stderr, "chyba: musi platit %d <= q <= %d\n",
-					n, n*n);
-				exit(EXIT_FAILURE);
-			}
 			break;
 		case 'p':
 			p = atoi(optarg);
-			if(p < 0 || p > 100) {
-				fprintf(stderr, "chyba: musi platit 0 <= p <= 100\n");
-				exit(EXIT_FAILURE);
-			}
 			break;
 		case 'v':
 			verbose = 1;
@@ -89,6 +70,27 @@ void parse_args(int argc, char **argv)
 		}
 	}
 
+	// kontroly (az kdyz mame vse)
+	if(n < 5) {
+		fprintf(stderr, "chyba: musi platit n >= 5\n");
+		exit(EXIT_FAILURE);
+	}
+	if(n > k || k > (n*(n+1)/2)) {
+		fprintf(stderr, "chyba: musi platit %d <= k <= %d\n",
+			n, (n*(n+1)/2));
+		exit(EXIT_FAILURE);
+	}
+	if(n > q || q > (n*n)) {
+		fprintf(stderr, "chyba: musi platit %d <= q <= %d\n",
+			n, n*n);
+		exit(EXIT_FAILURE);
+	}
+	if(p < 0 || p > 100) {
+		fprintf(stderr, "chyba: musi platit 0 <= p <= 100\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// nazev souboru neni povinny
 	if(optind < argc) {
 		if(optind + 1 < argc) {
 			fprintf(stderr, "chyba: neocekavany argument\n");
@@ -134,8 +136,8 @@ int main(int argc, char **argv) {
 		ki = rand() % t->k;         // vyber figurky
 		di = rand() % LLD;          // vyber smeru
 
-		if(task_move(t, NULL, ki, di, &m, NULL) == 1) {
-			hist_move(h, m);
+		if(task_move(t, NULL, ki, di, &m, NULL, 0) == 1) {
+			hist_append_move(h, m);
 			qq--;
 		}
 	}

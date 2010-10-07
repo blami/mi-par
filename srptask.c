@@ -31,10 +31,15 @@ task_t * task_init(const unsigned int n, const unsigned int k,
 	t->q = q;
 
 	t->P = (unsigned int *)utils_malloc(sizeof(unsigned int) * (n*n));
+	memset(t->P, 0, sizeof(unsigned int) * (n*n));
+	/*
 	for(i = 0; i < n*n; i++)
 		t->P[i] = 0;
+	*/
 
 	t->B = (coords_t *)utils_malloc(sizeof(coords_t) * k);
+	memset(t->B, 0, sizeof(coords_t) * k);
+
 	// inicializovat vsechny figurky mimo sachovnici
 	task_clean(t);
 

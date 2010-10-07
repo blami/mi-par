@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#include "srputils.h"
 #include "srphist.h"
 
 
@@ -54,7 +53,7 @@ void hist_destroy(hist_t *h) {
 /**
  * Pridani tahu na konec historie.
  */
-void hist_move(hist_t *h, move_t m) {
+void hist_append_move(hist_t *h, move_t m) {
 	assert(h);
 
 	if(h->h == NULL) {
@@ -70,4 +69,27 @@ void hist_move(hist_t *h, move_t m) {
 	// tyto operace jsou afaik rychlejsi nez memcpy
 	h->h[h->l - 1][FROM].x = m[FROM].x;     h->h[h->l - 1][FROM].y = m[FROM].y;
 	h->h[h->l - 1][TO].x = m[TO].x;         h->h[h->l - 1][TO].y = m[TO].y;
+}
+
+/**
+ * Nacteni souradnic z historie tahu.
+ * \param a     stari tahu (od konce, tj. posledni je stary 1)
+ */
+coords_t hist_lookup_move(hist_t *h, const int d, const unsigned int a) {
+	assert(h);
+	assert(0 <= d < 2);
+	assert(a != 0);         // soucasny tah jeste neni v historii
+	coords_t c;
+
+	c.x = -1;
+	c.y = -1;
+
+	// toto nelze resit aserci!
+	if((!h->h) || (h->l <= a))
+		return c;
+
+	c.x = h->h[h->l - a][d].x;
+	c.y = h->h[h->l - a][d].y;
+
+	return c;
 }

@@ -142,10 +142,6 @@ int stack_push(stack_t *s, stack_item_t it)
 	s->it[s->s - 1].h = it.h;
 	s->it[s->s - 1].B = it.B;
 
-	/*
-	printf("stack: push s=%d st=%d\n", s->s, s->st);
-	printf("stack: push %d=(%d, %d, %x, %x)\n", s->s-1, s->it[s->s-1].d, s->it[s->s-1].p, s->it[s->s-1].h, s->it[s->s-1].B);
-	*/
 
 	return s->s;
 }

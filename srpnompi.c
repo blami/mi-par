@@ -144,7 +144,8 @@ int expand() {
 		if(it->p >= solution->p) {
 			if(verbose)
 				printf("Orez: penalizace je vyssi nez u dosavadniho reseni\n", t->q);
-			return 0;
+			stack_item_destroy(it);
+			return;
 		}
 
 	// maximalni hloubka stavoveho stromu
@@ -152,7 +153,8 @@ int expand() {
 	if(it->d == t->q) {
 		if(verbose)
 			printf("Omezeni: hloubka q=%d byla dosazena\n", t->q);
-		return 1;
+		stack_item_destroy(it);
+		return;
 	}
 
 	c = hist_lookup_move(it->h, FROM, 1 /* posledni tah */);
@@ -191,6 +193,7 @@ int expand() {
 	}
 
 	if(verbose) printf("Konec expanze\n");
+	stack_item_destroy(it);
 	return 0;
 }
 
@@ -275,6 +278,9 @@ int main(int argc, char **argv) {
 			filename);
 		exit(EXIT_FAILURE);
 	}
+
+	if(filename)
+		free(filename);
 
 	// pripravit zasobnik
 	s = stack_init();

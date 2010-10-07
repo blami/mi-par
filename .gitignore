@@ -3,3 +3,4 @@ srpgen
 srpnompi
 srpmpi
 *.srp
+test.c

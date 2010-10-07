@@ -106,12 +106,15 @@ void task_setup(task_t *t) {
  */
 int task_get_pos(task_t *t, coords_t *B, const coords_t c) {
 	assert(t);
-	assert(c.x < t->n && c.y < t->n);
 	unsigned int i;
 	coords_t *BB = t->B;
 
 	if(B != NULL)
 		BB = B;
+
+	// tah mimo nemuze byt aserce, protoze tah mimo je validni pokus
+	if(c.x < 0 || c.x >= t->n || c.y < 0 || c.y >= t->n)
+		return 1; // policko je neplatne (neexistuje)
 
 	for(i = 0; i < t->k; i++) {
 		if(BB[i].x == c.x && BB[i].y == c.y)
@@ -143,8 +146,8 @@ int task_set_pos(task_t *t, coords_t *B, const unsigned int i,
 		return 0;
 
 	if(task_get_pos(t, B, c) == 0) {
-		BB[i].x = c.x; BB[i].y = c.y;
-		return 1;
+	BB[i].x = c.x; BB[i].y = c.y;
+	return 1;
 	}
 
 	return 0;
@@ -160,10 +163,11 @@ int task_set_pos(task_t *t, coords_t *B, const unsigned int i,
  *      platny a byl proveden
  * \param p     celkova penalizace, kam ma byt pripoctena dilci penalizace za
  *      platny provedeny tah
+ * \param dry_run 1 pokud nechci tah skutecne provest
  * \returns     1 tah byl spravny (proveden), 0 tah byl nespravny (neproveden)
  */
 int task_move(task_t *t, coords_t *B, const unsigned int i, const dir_t d,
-	move_t *m, unsigned int *p)  {
+	move_t *m, unsigned int *p, int dry_run)  {
 	assert(t);
 	assert(i < t->k);
 	assert(0 < d < 8);
@@ -209,23 +213,32 @@ int task_move(task_t *t, coords_t *B, const unsigned int i, const dir_t d,
 		return 0;
 	}
 
-	// zkusit tahnout
-	if(task_set_pos(t, B, i, c)) {
-		// vratime tah pres parametr pro ucely historie tahu
-		if(m != NULL) {
-			(*m)[TO].x = c.x;
-			(*m)[TO].y = c.y;
-			(*m)[FROM].x = c_old.x;
-			(*m)[FROM].y = c_old.y;
-		}
-		// zvysime penalizaci
-		if(p != NULL) {
-			j = utils_map(c, t->n);
-			*p += t->P[j];
-		}
+	// overit jestli je tah mozny
+	if(task_get_pos(t, B, c) == 1) {
+		// na cilovem policku je figurka, nebo policko neexistuje
+		return 0;
+	}
 
-		return 1;
+	if(dry_run != 1) {
+		if(task_set_pos(t, B, i, c)) {
+			// vratime tah pres parametr pro ucely historie tahu
+			if(m != NULL) {
+				(*m)[TO].x = c.x;
+				(*m)[TO].y = c.y;
+				(*m)[FROM].x = c_old.x;
+				(*m)[FROM].y = c_old.y;
+			}
+			// zvysime penalizaci
+			if(p != NULL) {
+				j = utils_map(c, t->n);
+				*p += t->P[j];
+			}
+
+			return 1;
+		}
 	}
 
 	return 0;
 }
+
+

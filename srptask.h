@@ -49,6 +49,6 @@ int             task_get_pos(task_t *t, coords_t *B, const coords_t c);
 int             task_set_pos(task_t *t, coords_t *B, const unsigned int i,
 	const coords_t c);
 int             task_move(task_t *t, coords_t *B, const unsigned int i,
-	const dir_t d, move_t *m, unsigned int *p);
+	const dir_t d, move_t *m, unsigned int *p, int dry_run);
 
 #endif /* __SRPPROBLEM_H */

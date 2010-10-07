@@ -219,24 +219,23 @@ int task_move(task_t *t, coords_t *B, const unsigned int i, const dir_t d,
 		return 0;
 	}
 
+	// vratime tah pres parametr pro ucely historie tahu
+	if(m != NULL) {
+		(*m)[TO].x = c.x;
+		(*m)[TO].y = c.y;
+		(*m)[FROM].x = c_old.x;
+		(*m)[FROM].y = c_old.y;
+	}
+	// zvysime penalizaci
+	if(p != NULL) {
+		j = utils_map(c, t->n);
+		*p += t->P[j];
+	}
+
 	if(dry_run != 1) {
 		if(task_set_pos(t, B, i, c)) {
-			// vratime tah pres parametr pro ucely historie tahu
-			if(m != NULL) {
-				(*m)[TO].x = c.x;
-				(*m)[TO].y = c.y;
-				(*m)[FROM].x = c_old.x;
-				(*m)[FROM].y = c_old.y;
-			}
-			// zvysime penalizaci
-			if(p != NULL) {
-				j = utils_map(c, t->n);
-				*p += t->P[j];
-			}
-
 			return 1;
 		}
-	}
 
 	return 0;
 }

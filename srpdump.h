@@ -10,12 +10,15 @@
  */
 #ifndef __SRPDUMP_H
 #define __SRPDUMP_H
+#include "srptask.h"
+#include "srputils.h"
+#include "srphist.h"
 
 
-void        dump_serialize(FILE *f, task_t *t);
-task_t *    dump_unserialize(FILE *f);
-void        dump_task(FILE *f, task_t *t);
-void        dump_board(FILE *f, task_t *t);
-void        dump_hist(FILE *f, hist_t *h);
+extern void        dump_serialize(FILE *f, task_t *t);
+extern task_t *    dump_unserialize(FILE *f);
+extern void        dump_task(FILE *f, task_t *t);
+extern void        dump_board(FILE *f, task_t *t, coords_t *B);
+extern void        dump_hist(FILE *f, hist_t *h);
 
 #endif /* __SRPDUMP_H */

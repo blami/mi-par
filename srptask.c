@@ -11,7 +11,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <assert.h>
+#ifdef MPI
+#include <mpi.h>
+#endif /* MPI */
+#include "srpprint.h"
 #include "srptask.h"
 #include "srputils.h"
 #include "srphist.h"
@@ -256,3 +261,110 @@ inline coords_t * task_bdcpy(const task_t *t, coords_t *B) {
 	return Bd;
 }
 
+/**
+ * Spocte delku ulohy v bytech.
+ * \param include_board     pro 0 nezahrne velikost t->B (viz. poznamka 
+ *                          v mpipack)
+ */
+inline size_t task_sizeof(const task_t *t, const int include_board) {
+	assert(t);
+	size_t l;
+
+	l = sizeof(unsigned int) +                      // t->n
+		sizeof(unsigned int) +                      // t->k
+		sizeof(unsigned int) +                      // t->q
+		(include_board == 1 ?
+			((t->k) * sizeof(coords_t)) : 0) +      // t->B
+		((t->n * t->n) * sizeof(unsigned int));     // t->P
+
+	return l;
+}
+
+#ifdef MPI
+/**
+ * Serializovat ukol pro odeslani v MPI.
+ * \param l                 bude obsahovat delku vracene zpravy
+ * \param include_board     nezahrnovat konfiguraci sachovnice
+ */
+char * task_mpipack(const task_t *t, int *l, const int include_board) {
+	assert(t);
+	assert(l);
+	char *b = NULL;
+	int pos = 0;
+	int i;
+
+	*l = (int)task_sizeof(t, include_board);
+	b = (char *)utils_malloc((size_t)(*l) * sizeof(char));
+
+	// sestavit zpravu
+	// n,k,q
+	MPI_Pack((void *)&t->n, 1, MPI_UNSIGNED, b, *l, &pos, MPI_COMM_WORLD);
+	MPI_Pack((void *)&t->k, 1, MPI_UNSIGNED, b, *l, &pos, MPI_COMM_WORLD);
+	MPI_Pack((void *)&t->q, 1, MPI_UNSIGNED, b, *l, &pos, MPI_COMM_WORLD);
+
+	// konfiguraci sachovnice si neni treba vymenovat pri inicializaci vypoctu.
+	// Jednotlive uzly totiz dostanou konfiguraci sachovnice i s historii od
+	// zadani jako soucast STAVU pri obdrzeni prace (jak uloha vypadala
+	// potrebuji vedet jen z hlediska n,k,q a P).
+	if(include_board) {
+		// B, struct rozeberu ve tvaru x0,y0,x1,y0 .. xk-1,yk-1
+		for(i = 0; i < t->k; i++) {
+			MPI_Pack((void *)&t->B[i].x, 1, MPI_INT, b, *l, &pos,
+				MPI_COMM_WORLD);
+			MPI_Pack((void *)&t->B[i].y, 1, MPI_INT, b, *l, &pos,
+				MPI_COMM_WORLD);
+		}
+	}
+
+	// P, n*n velke linearni pole
+	MPI_Pack((void *)t->P, t->n*t->n, MPI_UNSIGNED, b, *l, &pos,
+		MPI_COMM_WORLD);
+
+	srpdebug("task", node, "delka bufferu: %db <zapsano %db>", *l, pos);
+	assert(pos == *l);
+
+	return b;
+}
+
+/**
+ * Deserializovat ukol po prijmu v MPI.
+ * \param l                 delka prijate zpravy (muze byt vetsi)
+ * \param include_board     pokud je 0 nepocitat s konfiguraci sachovnice
+ */
+task_t * task_mpiunpack(const char *b, int l, const int include_board) {
+	assert(b);
+	task_t *t = NULL;
+	int pos = 0;
+	int i;
+	unsigned int n;
+	unsigned int k;
+	unsigned int q;
+
+	// n,k,q
+	MPI_Unpack((void *)b, l, &pos, &n, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+	MPI_Unpack((void *)b, l, &pos, &k, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+	MPI_Unpack((void *)b, l, &pos, &q, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+
+	srpdebug("task", node, "uloha v bufferu <n=%d, k=%d, q=%d>", n, k, q);
+
+	t = task_init(n, k, q);
+
+	if(include_board) {
+		// B
+		for(i = 0; i < t->k; i++) {
+			MPI_Unpack((void *)b, l, &pos, &t->B[i].x, 1, MPI_INT,
+				MPI_COMM_WORLD);
+			MPI_Unpack((void *)b, l, &pos, &t->B[i].y, 1, MPI_INT,
+				MPI_COMM_WORLD);
+		}
+	}
+
+	// P
+	MPI_Unpack((void *)b, l, &pos, t->P, t->n*t->n, MPI_UNSIGNED,
+		MPI_COMM_WORLD);
+
+	srpdebug("task", node, "delka bufferu: %db <precteno %db>", l, pos);
+
+	return t;
+}
+#endif /* MPI */

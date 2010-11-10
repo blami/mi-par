@@ -331,7 +331,7 @@ char * task_mpipack(const task_t *t, int *l, const int include_board) {
  * \param l                 delka prijate zpravy (muze byt vetsi)
  * \param include_board     pokud je 0 nepocitat s konfiguraci sachovnice
  */
-task_t * task_mpiunpack(const char *b, int l, const int include_board) {
+task_t * task_mpiunpack(const char *b, const int l, const int include_board) {
 	assert(b);
 	task_t *t = NULL;
 	int pos = 0;

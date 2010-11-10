@@ -13,6 +13,8 @@
 #include "srphist.h"
 #include "srputils.h"
 
+extern int node;    /* srpnompi.c/srpmpi.c */
+
 /**
  * Smery tahu jezdcem.
  */
@@ -39,21 +41,25 @@ typedef struct {
 	unsigned int *P;    // pole penalizaci
 } task_t;
 
-extern task_t *             task_init(const unsigned int n,
+extern task_t *         task_init(const unsigned int n,
 	const unsigned int k, const unsigned int q);
-
-extern void                 task_destroy(task_t *t);
-extern unsigned int         task_clean(task_t *t);
-extern void                 task_setup(task_t *t);
-extern int                  task_get_pos(task_t *t, coords_t *B,const coords_t c);
-
-extern int                  task_set_pos(task_t *t, coords_t *B,
+extern void             task_destroy(task_t *t);
+extern unsigned int     task_clean(task_t *t);
+extern void             task_setup(task_t *t);
+extern int              task_get_pos(task_t *t, coords_t *B,const coords_t c);
+extern int              task_set_pos(task_t *t, coords_t *B,
 	const unsigned int i, const coords_t c);
-
-extern int                  task_move(task_t *t, coords_t *B, 
+extern int              task_move(task_t *t, coords_t *B, 
 	const unsigned int i, const dir_t d, move_t *m, unsigned int *p,
 	int dry_run);
+extern inline coords_t * task_bdcpy(const task_t *t, coords_t *B);
+extern size_t           task_sizeof(const task_t *t, const int include_board);
 
-extern inline coords_t *    task_bdcpy(const task_t *t, coords_t *B);
+#ifdef MPI
+extern char *           task_mpipack(const task_t *t, int *l,
+	const int include_board);
+extern task_t *         task_mpiunpack(const char *b, int l,
+	const int include_board);
+#endif /* MPI */
 
-#endif /* __SRPPROBLEM_H */
+#endif /* __SRPTASK_H */

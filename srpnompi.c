@@ -14,13 +14,13 @@
 #include <string.h>
 #include <getopt.h>
 #include <assert.h>
+#include "srpprint.h"
 #include "srputils.h"
 #include "srptask.h"
 #include "srphist.h"
 #include "srpdump.h"
 #include "srpstack.h"
 
-int verbose = 0;
 char *filename = NULL;
 task_t *t, *tf;
 stack_t *s;
@@ -28,6 +28,8 @@ hist_t *h;
 move_t m;
 stack_item_t *solution;     // nejlepsi nalezene reseni
 unsigned int cc;            // pocitadlo analyzovanych stavu
+
+int node = NONE;            // mpi node (rank)
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -37,14 +39,9 @@ void parse_args(int argc, char **argv)
 	int a;
 	while((a = getopt(argc, argv, "vh")) != -1){
 		switch(a) {
-		case 'v':
-			verbose = 1;
-			break;
 		case 'h':
 			printf("srpnompi: sekvencni (ne-OpenMPI) resitel ulohy SRP\n\n"
 				"Pouziti: srpnompi [prepinace] <soubor>\n"
-				" -v            vypisovat informace o prubehu algoritmu "
-					"resitele\n"
 				" -h            zobrazi tuto napovedu\n\n");
 			exit(EXIT_SUCCESS);
 			break;
@@ -53,7 +50,7 @@ void parse_args(int argc, char **argv)
 
 	if(optind < argc) {
 		if(optind + 1 < argc) {
-			fprintf(stderr, "chyba: neocekavany argument\n");
+			srpfprintf(stderr, node, "chyba: neocekavany argument");
 			exit(EXIT_FAILURE);
 		}
 
@@ -61,8 +58,8 @@ void parse_args(int argc, char **argv)
 		return;
 	}
 
-	fprintf(stderr, "chyba: ocekavan nazev vstupniho souboru se zadanim "
-		"ulohy\n");
+	srpfprintf(stderr, node, "chyba: ocekavan nazev vstupniho souboru "
+		"se zadanim ulohy");
 	exit(EXIT_FAILURE);
 }
 
@@ -74,7 +71,8 @@ int read_file(char *filename) {
 	int r = 0;
 
 	if(!(f = fopen(filename, "r"))) {
-		fprintf(stderr, "chyba: nelze otevrit soubor `%s'\n", filename);
+		srpfprintf(stderr, node, "chyba: nelze otevrit soubor `%s'",
+			filename);
 		exit(EXIT_FAILURE);
 	}
 
@@ -96,18 +94,16 @@ int compare(task_t *tr, coords_t *B) {
 	assert(B);
 	int i;
 
-	if(verbose) printf("reseni: porovnani... ");
-
 	// projdu vsechny figurky v referencnim reseni a zjistim jestli jsou
 	// jejich pozice obsazeny i na porovnavane sachovnici obsazeny
 	for(i = 0; i < t->k; i++) {
 		if(!task_get_pos(tr, B, tr->B[i])) {
-			if(verbose) printf("neshoda\n");
+			srpdebug("nompi", node, "porovnani <neshoda>");
 			return 0;
 		}
 	}
 
-	if(verbose) printf("shoda\n");
+	srpdebug("nompi", node, "porovnani <shoda>");
 	return 1;
 }
 
@@ -125,7 +121,7 @@ int expand() {
 	int dir;
 	stack_item_t its;   // novy stav (vznikly expanzi)
 
-	if(verbose) printf("reseni: expanze...\n");
+	srpdebug("nompi", node, "expanze <zacatek>");
 
 	// vyndani uzlu ze zasobniku
 	it = stack_pop(s);
@@ -142,9 +138,9 @@ int expand() {
 	// protoze nemame zaporne penalizace. Takove vetve lze oriznout.
 	if(solution != NULL) 
 		if(it->p >= solution->p) {
-			if(verbose)
-				printf("reseni: orez, p=%d je horsi nez nejlepsi p=%d\n", 
-					it->p, solution->p);
+			srpdebug("nompi", node, "expanze <orez, p=%d je horsi nez "
+				"nejlepsi p=%d>",
+				it->p, solution->p);
 			stack_item_destroy(it);
 			return;
 		}
@@ -152,8 +148,9 @@ int expand() {
 	// maximalni hloubka stavoveho stromu
 	// FIXME zeptat se p.Simecka jestli je tohle legalni
 	if(it->d == t->q) {
-		if(verbose)
-			printf("reseni: dosazeno q=%d\n", t->q);
+		srpdebug("nompi", node, "expanze <dosazena max. hloubka stav. "
+			"prostoru q=%d>",
+			t->q);
 		stack_item_destroy(it);
 		return;
 	}
@@ -180,20 +177,12 @@ int expand() {
 				task_move(t, its.B, i, dir, &m, &its.p, 0);
 				hist_append_move(its.h, m);
 
-				if(verbose) {
-					dump_board(stdout, t, it->B);
-					dump_hist(stdout, it->h);
-					printf("---\n");
-					dump_board(stdout, t, its.B);
-					dump_hist(stdout, its.h);
-				}
-
 				stack_push(s, its);
 			}
 		}
 	}
 
-	if(verbose) printf("reseni: konec expanze\n");
+	srpdebug("nompi", node, "expanze <konec>");
 	stack_item_destroy(it);
 	return 0;
 }
@@ -224,7 +213,7 @@ void solve() {
 	assert(t);
 	cc = 0;
 
-	printf("reseni: hledani...\n");
+	srpdebug("nompi", node, "hledani reseni");
 
 	// pocatecni stav
 	stack_item_t it;
@@ -236,28 +225,27 @@ void solve() {
 	stack_push(s, it);
 
 	while(!stack_empty(s)) {
-		if(verbose)
-			printf("reseni: hloubka: %d, prohledane stavy: %d\n",
-				stack_top(s)->d, cc);
+		srpdebug("nompi", node, "hloubka: %d, prohledane stavy: %d",
+			stack_top(s)->d, cc);
 
 		if(compare(tf, stack_top(s)->B)) {
 			// na zasobniku je reseni ulohy
-			printf("reseni: nalezeno p=%d", stack_top(s)->p);
+			srpdebug("nompi", node, "nalezeno reseni p=%d", stack_top(s)->p);
 
 			if(solution == NULL) {
 				solution = stack_pop(s);
-				printf(" <prvni>\n");
+				srpdebug("nompi", node, "reseni je: <prvni>");
 			} else {
 				if(solution->p > stack_top(s)->p) {
 					stack_item_destroy(solution);
 					solution = stack_pop(s);
-					printf(" <prub.nejlepsi>\n");
+					srpdebug("nompi", node, "reseni je: <prub.nejlepsi>");
 				} else {
-					printf(" <horsi o=%d>\n",
+					srpdebug("nompi", node, "reseni je: <horsi o=%d>",
 						stack_top(s)->p - solution->p);
 				}
 			}
-			dump_hist(stdout, stack_top(s)->h);
+			//dump_hist(stdout, stack_top(s)->h);
 
 		}
 		if(stack_empty(s))
@@ -275,7 +263,7 @@ int main(int argc, char **argv) {
 
 	// nacteni ulohy
 	if(!read_file(filename)) {
-		fprintf(stderr, "chyba: nelze nacist zadani ulohy SRP `%s''\n",
+		srpfprintf(stderr, node, "chyba: nelze nacist zadani ulohy SRP `%s''",
 			filename);
 		exit(EXIT_FAILURE);
 	}
@@ -293,16 +281,16 @@ int main(int argc, char **argv) {
 	solve();
 
 	// vypsat statistiky
-	printf("-----\n");
-	printf("uloha:\n");
+	srpprintf(node, "-----");
+	srpprintf(node, "uloha:");
 	dump_task(stdout,t);
 
-	printf("prohledano stavu: %d\n", cc);
+	srpprintf(node, "prohledano stavu: %d", cc);
 
 	if(!solution) {
-		printf("reseni: nenalezeno!\n");
+		srpprintf(node, "reseni nebylo nalezeno!");
 	} else {
-		printf("reseni: p=%d\n", solution->p);
+		srpprintf(node, "reseni nalezeno p=%d", solution->p);
 		dump_hist(stdout, solution->h);
 	}
 

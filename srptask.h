@@ -58,7 +58,7 @@ extern size_t           task_sizeof(const task_t *t, const int include_board);
 #ifdef MPI
 extern char *           task_mpipack(const task_t *t, int *l,
 	const int include_board);
-extern task_t *         task_mpiunpack(const char *b, int l,
+extern task_t *         task_mpiunpack(const char *b, const int l,
 	const int include_board);
 #endif /* MPI */
 

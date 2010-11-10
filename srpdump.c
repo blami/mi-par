@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "srpprint.h"
 #include "srpdump.h"
 
 
@@ -112,38 +113,29 @@ void dump_task(FILE *f, task_t *t) {
 	int i;
 
 	// zakladni udaje
-	fprintf(f, "n=%d\n"
-		"k=%d\n"
-		"q=%d\n",
+	srpfprintf(f, node, "n=%d,"
+		"k=%d,"
+		"q=%d",
 		t->n, t->k, t->q);
 
 	// vypsat souradnice figurek
-	fprintf(f, "B=");
+	srpfprintf(f, node, "B:");
 	for(i = 0; i < t->k; i++) {
-		fprintf(f, "%d:%d", t->B[i].x, t->B[i].y);
-
-		if(i != t->k - 1)
-			fprintf(f, ",");
+		srpfprintf(f, node, "%d. %d:%d", i+1, t->B[i].x, t->B[i].y);
 	}
-	fprintf(f, "\n");
 
 	// vypsat obraz sachovnice
-	fprintf(f, "S=\n");
+	srpfprintf(f, node, "S:");
 	dump_board(f, t, NULL);
 
-	// vypsat penalizace v matici jako sachovnici
-	fprintf(f, "P=\n");
+	// vypsat penalizace po souradnicich
+	srpfprintf(f, node, "P:");
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
 			// spocitat index v t->P
 			i = utils_map(c, t->n);
-
-			fprintf(f, "%d", t->P[i]);
-
-			if(c.x != t->n - 1)
-				fprintf(f, ",");
+			srpfprintf(f, node, "%d:%d=%d", c.x, c.y, t->P[i]);
 		}
-		fprintf(f, "\n");
 	}
 }
 
@@ -154,15 +146,17 @@ void dump_board(FILE *f, task_t *t, coords_t *B) {
 	assert(t);
 	assert(f);
 	coords_t c;
+	char r[t->n + 1];
 
 	for(c.y = 0; c.y < t->n; c.y++) {
 		for(c.x = 0; c.x < t->n; c.x++) {
 			if(task_get_pos(t, B, c) == 0)
-				fprintf(f, ".");
+				r[c.x] = '.';
 			else
-				fprintf(f, "#");
+				r[c.x] = '#';
 		}
-		fprintf(f, "\n");
+		r[t->n] = '\0';
+		srpfprintf(f, node, "%s", r);
 	}
 }
 
@@ -174,18 +168,16 @@ void dump_hist(FILE *f, hist_t *h) {
 	assert(f);
 	int i;
 
-	fprintf(f, "tahy: ");
+	srpfprintf(f, node, "historie tahu:");
 
 	if(h->l == 0) {
-		fprintf(f, "-nic-\n");
+		srpfprintf(f, node, "<zadne tahy>");
 		return;
 	}
 
 	for(i = 0; i < h->l; i++) {
-		fprintf(f, "%d:%d->%d:%d", h->h[i][FROM].x, h->h[i][FROM].y,
-			h->h[i][TO].x, h->h[i][TO].y);
-		if(i != h->l - 1)
-			fprintf(f, ",");
+		srpfprintf(f, node, "%d. %d:%d->%d:%d", i + 1,
+			h->h[i][FROM].x, h->h[i][FROM].y,   // z
+			h->h[i][TO].x, h->h[i][TO].y);      // na
 	}
-	fprintf(f, "\n");
 }

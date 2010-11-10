@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <time.h>
 #include <string.h>
+#include "srpprint.h"
 #include "srputils.h"
 #include "srpdump.h"
 #include "srphist.h"
@@ -28,6 +29,8 @@ hist_t* h;
 move_t m;
 char* filename = NULL;
 int verbose = 0;
+
+int node = -1;
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -72,28 +75,28 @@ void parse_args(int argc, char **argv)
 
 	// kontroly (az kdyz mame vse)
 	if(n < 5) {
-		fprintf(stderr, "chyba: musi platit n >= 5\n");
+		srpfprintf(stderr, node, "chyba: musi platit n >= 5\n");
 		exit(EXIT_FAILURE);
 	}
 	if(n > k || k > (n*(n+1)/2)) {
-		fprintf(stderr, "chyba: musi platit %d <= k <= %d\n",
+		srpfprintf(stderr, node, "chyba: musi platit %d <= k <= %d\n",
 			n, (n*(n+1)/2));
 		exit(EXIT_FAILURE);
 	}
 	if(n > q || q > (n*n)) {
-		fprintf(stderr, "chyba: musi platit %d <= q <= %d\n",
+		srpfprintf(stderr, node, "chyba: musi platit %d <= q <= %d\n",
 			n, n*n);
 		exit(EXIT_FAILURE);
 	}
 	if(p < 0 || p > 100) {
-		fprintf(stderr, "chyba: musi platit 0 <= p <= 100\n");
+		srpfprintf(stderr, node, "chyba: musi platit 0 <= p <= 100\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// nazev souboru neni povinny
 	if(optind < argc) {
 		if(optind + 1 < argc) {
-			fprintf(stderr, "chyba: neocekavany argument\n");
+			srpfprintf(stderr, node, "chyba: neocekavany argument\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -101,7 +104,7 @@ void parse_args(int argc, char **argv)
 	}
 
 	if(n == -1 || k == -1 || q == -1) {
-		fprintf(stderr, "chyba: povinne parametry jsou -n,-k a -q\n");
+		srpfprintf(stderr, node, "chyba: povinne parametry jsou -n,-k a -q\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -144,7 +147,7 @@ int main(int argc, char **argv) {
 
 	if(filename != NULL) {
 		if(!(f = fopen(filename, "w"))) {
-			fprintf(stderr, "chyba: nelze zapisovat do souboru `%s'",
+			srpfprintf(stderr, node, "chyba: nelze zapisovat do souboru `%s'",
 				filename);
 			exit(EXIT_FAILURE);
 		}

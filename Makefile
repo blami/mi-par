@@ -1,30 +1,42 @@
+CC=gcc
+LIBS=
+MPICC=mpicc
+MPILIBS=
+
 # Debugging
 CFLAGS=-g
 # Release
 #CFLAGS=
 
-all: srpgen srpnompi
+all: srpgen srpnompi srpmpi
 
-srpnompi: srpnompi.c srputils.o srptask.o srpdump.o srphist.o srpstack.o
-	gcc $(CFLAGS) -o srpnompi srpnompi.c srputils.c srptask.o srpdump.o srphist.o srpstack.o
+srpnompi: srpnompi.c srputils.c srptask.c srpdump.c srphist.c srpstack.c
+	$(CC) $(CFLAGS) -o srpnompi \
+		srpnompi.c \
+		srputils.c \
+		srptask.c \
+		srpdump.c \
+		srphist.c \
+		srpstack.c \
+		$(LIBS)
 
-srpgen: srpgen.c srputils.o srptask.o srpdump.o srphist.o
-	gcc $(CFLAGS) -o srpgen srpgen.c srputils.o srptask.o srpdump.o srphist.o
+srpmpi: srpmpi.c srputils.c srptask.c srpdump.c srphist.c srpstack.c
+	$(MPICC) $(CFLAGS) -o srpmpi -DMPI \
+		srpmpi.c \
+		srputils.c \
+		srptask.c \
+		srpdump.c \
+		srphist.c \
+		srpstack.c \
+		$(MPILIBS)
 
-srptask.o: srptask.c srptask.h
-	gcc $(CFLAGS) -c srptask.c
-
-srputils.o: srputils.c srputils.h
-	gcc $(CFLAGS) -c srputils.c
-
-srpdump.o: srpdump.c srpdump.h
-	gcc $(CFLAGS) -c srpdump.c
-
-srphist.o: srphist.c srphist.h
-	gcc $(CFLAGS) -c srphist.c
-
-srpstack.o: srpstack.c srpstack.h
-	gcc $(CFLAGS) -c srpstack.c
+srpgen: srpgen.c srputils.c srptask.c srpdump.c srphist.c
+	$(CC) $(CFLAGS) -o srpgen \
+		srpgen.c \
+		srputils.c \
+		srptask.c \
+		srpdump.c \
+		srphist.c
 
 clean:
 	-rm -f *.o

@@ -25,7 +25,7 @@ typedef coords_t move_t[2];     // indexy: 0 je z, 1 je do
  */
 typedef struct {
 	move_t *h;                  // tahy v historii
-	int l;                      // delka historie tahu
+	unsigned int l;             // delka historie tahu
 } hist_t;
 
 extern hist_t *    hist_init(const hist_t *ho);

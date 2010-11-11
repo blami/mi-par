@@ -27,6 +27,7 @@ typedef struct {
 	unsigned int p;             // celkova penalizace
 	hist_t *h;                  // historie tahu
 	coords_t *B;                // stav sachovnice
+	int dirty;                  // spinavy zaznam, odstranit pri defragmentaci pokud 1
 } stack_item_t;
 
 /**
@@ -48,6 +49,8 @@ extern int              stack_push(stack_t *s, stack_item_t it);
 extern stack_item_t *   stack_top(stack_t *s); // vraci ukazatel na stackovy
 extern stack_item_t *   stack_pop(stack_t *s); // vraci ukazatel na novou instanci (zkopiruje)
 extern inline size_t    stack_sizeof(const stack_t *s, const task_t *t);
+extern stack_t *        stack_divide(stack_t *ss, const int n);
+extern stack_t *        stack_merge(stack_t *s, stack_t *sa);
 
 #ifdef MPI
 extern char *           stack_mpipack(const stack_t *s, const task_t *t, int *l);

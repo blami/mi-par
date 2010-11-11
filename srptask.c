@@ -296,6 +296,9 @@ char * task_mpipack(const task_t *t, int *l, const int include_board) {
 	*l = (int)task_sizeof(t, include_board);
 	b = (char *)utils_malloc((size_t)(*l) * sizeof(char));
 
+	srpdebug("task", node, "serializace ulohy <n=%d, k=%d, q=%d>", t->n,
+		t->k, t->q);
+
 	// sestavit zpravu
 	// n,k,q
 	MPI_Pack((void *)&t->n, 1, MPI_UNSIGNED, b, *l, &pos, MPI_COMM_WORLD);
@@ -345,7 +348,7 @@ task_t * task_mpiunpack(const char *b, const int l, const int include_board) {
 	MPI_Unpack((void *)b, l, &pos, &k, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
 	MPI_Unpack((void *)b, l, &pos, &q, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
 
-	srpdebug("task", node, "uloha v bufferu <n=%d, k=%d, q=%d>", n, k, q);
+	srpdebug("task", node, "deserializace ulohy <n=%d, k=%d, q=%d>", n, k, q);
 
 	t = task_init(n, k, q);
 

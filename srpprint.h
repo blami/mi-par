@@ -12,12 +12,14 @@
 #define __SRPPRINT_H
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 /*
  * Rizeni ladeni.
  */
 #define DEBUG
-#define DEBUG_COMP "dump hist stack task utils mpi nompi gen"
+//#define DEBUG_COMP "dump hist task stack utils mpi nompi core gen"
+#define DEBUG_COMP "mpi"
 
 #define NONE -1                             /* don't use node */
 
@@ -26,11 +28,13 @@
  */
 #define srpfprintf(f, n, fmt, ...) {                            \
 	if(n >= 0) {                                                \
-		fprintf(f, "[%d] %s:%03d %s(): " fmt "\n",              \
-			n, __FILE__, __LINE__, __func__, ##__VA_ARGS__);    \
+		fprintf(f, "[%d]:%d %s:%03d %s(): " fmt "\n",           \
+			n, getpid(), __FILE__, __LINE__, __func__,          \
+			##__VA_ARGS__);                                     \
 	} else {                                                    \
-		fprintf(f, "%s:%03d %s(): " fmt "\n",                   \
-			__FILE__, __LINE__, __func__, ##__VA_ARGS__);       \
+		fprintf(f, "%d %s:%03d %s(): " fmt "\n",                \
+			getpid(), __FILE__, __LINE__, __func__,             \
+			##__VA_ARGS__);                                     \
 	}                                                           \
 }
 

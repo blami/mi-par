@@ -6,7 +6,7 @@
  */
 
 /*
- * srpnompi: sekvencni (ne-OpenMPI) resitel ulohy
+ * srpcore: sekvencni (ne-OpenMPI) resitel ulohy
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,8 +28,9 @@ hist_t *h;
 move_t m;
 stack_item_t *solution;     // nejlepsi nalezene reseni
 unsigned int cc;            // pocitadlo analyzovanych stavu
+unsigned int co;            // pocitadlo orezanych stavu
 
-int node = NONE;            // mpi node (rank)
+int node = -1;
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -40,8 +41,8 @@ void parse_args(int argc, char **argv)
 	while((a = getopt(argc, argv, "vh")) != -1){
 		switch(a) {
 		case 'h':
-			printf("srpnompi: sekvencni (ne-OpenMPI) resitel ulohy SRP\n\n"
-				"Pouziti: srpnompi [prepinace] <soubor>\n"
+			printf("srpcore: sekvencni (ne-OpenMPI) resitel ulohy SRP\n\n"
+				"Pouziti: srpcore [prepinace] <soubor>\n"
 				" -h            zobrazi tuto napovedu\n\n");
 			exit(EXIT_SUCCESS);
 			break;
@@ -98,12 +99,12 @@ int compare(task_t *tr, coords_t *B) {
 	// jejich pozice obsazeny i na porovnavane sachovnici obsazeny
 	for(i = 0; i < t->k; i++) {
 		if(!task_get_pos(tr, B, tr->B[i])) {
-			srpdebug("nompi", node, "porovnani <neshoda>");
+			srpdebug("core", node, "porovnani <neshoda>");
 			return 0;
 		}
 	}
 
-	srpdebug("nompi", node, "porovnani <shoda>");
+	srpdebug("core", node, "porovnani <shoda>");
 	return 1;
 }
 
@@ -121,7 +122,7 @@ int expand() {
 	int dir;
 	stack_item_t its;   // novy stav (vznikly expanzi)
 
-	srpdebug("nompi", node, "expanze <zacatek>");
+	srpdebug("core", node, "expanze <zacatek>");
 
 	// vyndani uzlu ze zasobniku
 	it = stack_pop(s);
@@ -138,20 +139,22 @@ int expand() {
 	// protoze nemame zaporne penalizace. Takove vetve lze oriznout.
 	if(solution != NULL) 
 		if(it->p >= solution->p) {
-			srpdebug("nompi", node, "expanze <orez, p=%d je horsi nez "
+			srpdebug("core", node, "expanze <orez, p=%d je horsi nez "
 				"nejlepsi p=%d>",
 				it->p, solution->p);
 			stack_item_destroy(it);
+			co++;
 			return;
 		}
 
 	// maximalni hloubka stavoveho stromu
 	// FIXME zeptat se p.Simecka jestli je tohle legalni
 	if(it->d == t->q) {
-		srpdebug("nompi", node, "expanze <dosazena max. hloubka stav. "
+		srpdebug("core", node, "expanze <dosazena max. hloubka stav. "
 			"prostoru q=%d>",
 			t->q);
 		stack_item_destroy(it);
+		co++;
 		return;
 	}
 
@@ -182,7 +185,7 @@ int expand() {
 		}
 	}
 
-	srpdebug("nompi", node, "expanze <konec>");
+	srpdebug("core", node, "expanze <konec>");
 	stack_item_destroy(it);
 	return 0;
 }
@@ -212,8 +215,9 @@ void solve() {
 	assert(s);
 	assert(t);
 	cc = 0;
+	co = 0;
 
-	srpdebug("nompi", node, "hledani reseni");
+	srpdebug("core", node, "hledani reseni");
 
 	// pocatecni stav
 	stack_item_t it;
@@ -225,23 +229,23 @@ void solve() {
 	stack_push(s, it);
 
 	while(!stack_empty(s)) {
-		srpdebug("nompi", node, "hloubka: %d, prohledane stavy: %d",
+		srpdebug("core", node, "hloubka: %d, prohledane stavy: %d",
 			stack_top(s)->d, cc);
 
 		if(compare(tf, stack_top(s)->B)) {
 			// na zasobniku je reseni ulohy
-			srpdebug("nompi", node, "nalezeno reseni p=%d", stack_top(s)->p);
+			srpdebug("core", node, "nalezeno reseni p=%d", stack_top(s)->p);
 
 			if(solution == NULL) {
 				solution = stack_pop(s);
-				srpdebug("nompi", node, "reseni je: <prvni>");
+				srpdebug("core", node, "reseni je: <prvni>");
 			} else {
 				if(solution->p > stack_top(s)->p) {
 					stack_item_destroy(solution);
 					solution = stack_pop(s);
-					srpdebug("nompi", node, "reseni je: <prub.nejlepsi>");
+					srpdebug("core", node, "reseni je: <prub.nejlepsi>");
 				} else {
-					srpdebug("nompi", node, "reseni je: <horsi o=%d>",
+					srpdebug("core", node, "reseni je: <horsi o=%d>",
 						stack_top(s)->p - solution->p);
 				}
 			}
@@ -285,7 +289,7 @@ int main(int argc, char **argv) {
 	srpprintf(node, "uloha:");
 	dump_task(stdout,t);
 
-	srpprintf(node, "prohledano stavu: %d", cc);
+	srpprintf(node, "prohledano stavu: %d (orezano: %d)", cc, co);
 
 	if(!solution) {
 		srpprintf(node, "reseni nebylo nalezeno!");

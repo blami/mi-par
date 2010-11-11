@@ -59,6 +59,155 @@ void stack_item_destroy(stack_item_t *it) {
 }
 
 /**
+ * Spocte delku zaznamu zasobniku v bytech.
+ */
+inline size_t stack_item_sizeof(const stack_item_t *it, const task_t *t) {
+	assert(it);
+	assert(t);
+	size_t l = 0;
+	int i,j;
+
+	// zaznamy zasobniku
+	l += sizeof(unsigned int) +     // it->d
+		sizeof(unsigned int);       // it->p
+
+	// historie tahu
+	l += sizeof(unsigned int);      // it->h->l
+	l += it->h->l * 
+	(4 * sizeof(int));              // it->h->l * 2*{x,y}
+
+	// konfigurace sachovnice
+	l += t->k * (2 * sizeof(int));  // t->k * {x,y}
+
+	return l;
+}
+
+
+#ifdef MPI
+/**
+ * Serializovat zaznam zasobniku
+ */
+char * stack_item_mpipack(const stack_item_t *it, const task_t *t, int *l) {
+	assert(it);
+	assert(t);
+	char *b = NULL;
+	int pos = 0;
+	int i,j;
+
+	*l = (int)stack_item_sizeof(it, t);
+	b = (char *)utils_malloc((size_t)(*l) * sizeof(char));
+
+	srpdebug("stack", node, "serializace zaznamu zasobniku <s=%d>");
+
+	// hloubka ve stavovem prostoru, celkova penalizace
+	// it->d, it->p
+	MPI_Pack((void *)&it->d, 1, MPI_UNSIGNED, b, *l, &pos,
+		MPI_COMM_WORLD);
+	MPI_Pack((void *)&it->p, 1, MPI_UNSIGNED, b, *l, &pos,
+		MPI_COMM_WORLD);
+
+	// historie tahu
+	// delka historie tahu
+	// it->h->l
+	MPI_Pack((void *)&it->h->l, 1, MPI_UNSIGNED, b, *l, &pos,
+		MPI_COMM_WORLD);
+
+	// jednotlive tahy v ramci historie tahu
+	// it->h->h
+	for(j = 0; j < it->h->l; j++) {
+		MPI_Pack((void *)&it->h->h[j][FROM].x, 1, MPI_INT, b, *l, &pos,
+			MPI_COMM_WORLD);
+		MPI_Pack((void *)&it->h->h[j][FROM].y, 1, MPI_INT, b, *l, &pos,
+			MPI_COMM_WORLD);
+		MPI_Pack((void *)&it->h->h[j][TO].x, 1, MPI_INT, b, *l, &pos,
+			MPI_COMM_WORLD);
+		MPI_Pack((void *)&it->h->h[j][TO].y, 1, MPI_INT, b, *l, &pos,
+			MPI_COMM_WORLD);
+	}
+
+	// konfigurace sachovnice
+	// it->B
+	for(j = 0; j < t->k; j++) {
+		MPI_Pack((void *)&it->B[j].x, 1, MPI_INT, b, *l, &pos,
+			MPI_COMM_WORLD);
+		MPI_Pack((void *)&it->B[j].y, 1, MPI_INT, b, *l, &pos,
+		MPI_COMM_WORLD);
+	}
+
+	srpdebug("stack", node, "delka bufferu: %db <zapsano %db>", *l, pos);
+	assert(pos == *l);
+
+	return b;
+}
+
+/**
+ * De-serializovat zaznam zasobniku po prijmu pomoci MPI.
+ */
+/*
+stack_item_t * stack_mpiunpack(const char *b, const task_t *t, const int l) {
+	assert(b);
+	assert(t);
+	stack_item_t *it;
+	int pos = 0;
+	int i,j;
+	move_t m;
+	stack_item_t it;
+
+	unsigned int
+
+	it = stack_item_init();
+
+	// delka zasobniku s->s
+	MPI_Unpack((void *)b, l, &pos, &ss, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+
+	srpdebug("stack", node, "deserializace zasobniku <s=%d>", ss);
+
+	// zaznamy zasobniku s->it[]
+	for(i = 0; i < ss; i++) {
+		// zaznam
+		// it->d, it->p
+		MPI_Unpack((void *)b, l, &pos, &it.d, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+		MPI_Unpack((void *)b, l, &pos, &it.p, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+
+		// historie tahu vedouci ke stavu reprezentovaneho zaznamem
+		// it->h
+		MPI_Unpack((void *)b, l, &pos, &hl, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+		it.h = hist_init(NULL);
+		for(j = 0; j < hl; j++) {
+			MPI_Unpack((void *)b, l, &pos, &m[FROM].x, 1, MPI_INT,
+				MPI_COMM_WORLD);
+			MPI_Unpack((void *)b, l, &pos, &m[FROM].y, 1, MPI_INT,
+				MPI_COMM_WORLD);
+			MPI_Unpack((void *)b, l, &pos, &m[TO].x, 1, MPI_INT,
+				MPI_COMM_WORLD);
+			MPI_Unpack((void *)b, l, &pos, &m[TO].y, 1, MPI_INT,
+				MPI_COMM_WORLD);
+
+			hist_append_move(it.h, m);
+		}
+
+		// konfigurace sachovnice
+		// it->B
+		it.B = (coords_t *)utils_malloc((t->k) * sizeof(coords_t));
+		for(j = 0; j < t->k; j++) {
+			MPI_Unpack((void *)b, l, &pos, &it.B[j].x, 1, MPI_INT,
+				MPI_COMM_WORLD);
+			MPI_Unpack((void *)b, l, &pos, &it.B[j].y, 1, MPI_INT,
+				MPI_COMM_WORLD);
+		}
+
+		stack_push(s, it);
+	}
+
+	srpdebug("stack", node, "delka bufferu: %db <precteno %db>", l, pos);
+
+	return s;
+}
+*/
+#endif /* MPI */
+
+
+/**
  * Inicializace struktury zasobniku.
  */
 stack_t * stack_init() {
@@ -222,7 +371,6 @@ stack_item_t * stack_steal(stack_t *s, const int i)
 
 	return it;
 }
-
 
 /**
  * Spocte delku zasobniku v bytech.

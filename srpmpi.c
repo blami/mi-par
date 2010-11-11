@@ -14,6 +14,8 @@
 #include <string.h>
 #include <getopt.h>
 #include <assert.h>
+#include <time.h>
+#include <unistd.h>
 #include <mpi.h>
 #include "srpprint.h"
 #include "srputils.h"
@@ -27,32 +29,66 @@ task_t *t, *tf;
 stack_t *s;
 hist_t *h;
 move_t m;
-stack_item_t *solution;     // nejlepsi nalezene reseni
-unsigned int cc;            // pocitadlo analyzovanych stavu
-int work_done = 0;
-
-const int mpi_msg_max = 150;
-int mpi_best_p = -1;        // nejlepsi dosazena orezova hodnota
-int mpi_token_wait = 0;     // cekam na vracejiciho se peska
-int mpi_msg_try = 0;        // pocet pokusu o ziskani prace (4 * pocet uzlu)
-int mpi_token[2];           // pesek (0: id zadatele, 1: barva)
-int node = NONE;            // mpi node (rank)
-int node_count = NONE;      // pocet vypocetnich uzlu
+stack_item_t *solution;             // nejlepsi nalezene reseni
+unsigned int cc;                    // pocitadlo analyzovanych stavu
+unsigned int co;                    // pocitadlo orezanych stavu
 
 /**
  * Zpravy MPI
  */
 typedef enum {
-	MSG_REQUEST = 1,        // zadost MPI_INT
-	MSG_STACK,               // poz. odpoved MPI_INT (velikost prace)
-	MSG_STACK_DATA,               // poz. odpoved MPI_PACKED (zasobnik)
-	MSG_NOSTACK,             // neg. odpoved MPI_INT
-	MSG_SOLUTION,           // zprava o soucasnem nejlepsim reseni
-	MSG_TOKEN,              // token
-	                        // (kdyz mam praci a prijde mi 1:0 pesek,
-	                        // poslu TASK zadateli)
+	MSG_REQUEST = 1,                // zadost o praci
+	MSG_STACK,                      // odpoved velikost prace
+	MSG_STACK_DATA,                 // odpoved zasobnik
+	MSG_NOSTACK,                    // neg. odpoved
+	MSG_PENALTY,                    // penalizace
+	MSG_TOKEN,                      // token
+	MSG_FINALIZE,                   // ukonceni vypoctu
 	MSG_UNKNOWN
-} mpi_tag;
+} mpi_tag_e;
+
+/**
+ * Stavy MPI
+ */
+typedef enum {
+	STATE_BUSY = 0,                 // pracuje
+	STATE_IDLE,                     // ceka
+	STATE_TOKEN                     // ocekava pesek
+} mpi_state_e;
+
+/**
+ * Polozky pesku.
+ */
+typedef enum {
+	TOKEN_COLOR = 0,
+	TOKEN_PENALTY = 1,
+	TOKEN_SOLVER = 2
+} mpi_token_e;
+
+/**
+ * Barvy MPI
+ */
+typedef enum {
+	COLOR_WHITE = 0,                // bila
+	COLOR_BLACK = 1                 // cerna
+} mpi_color_e;
+
+// konstanty
+const int MPI_MSG_MAX = 150;
+const int MPI_IDLE_MAX = 1000;
+
+mpi_state_e mpi_idle = 1;           // stav procesu
+unsigned int mpi_best_p = -1;       // nejlepsi znama penalizace (orez)
+unsigned int mpi_best_p_flag = 0;   // odesilat nejlepsi znamou penalizaci
+                                    // pri dalsim mpi_handle() ?
+int mpi_token_flag = 0;             // uzel > 0 pouziva pole pro indikaci ze
+                                    // ma pesek
+int mpi_token[3];
+
+mpi_color_e mpi_color = COLOR_WHITE;// barva procesoru
+int node = NONE;                    // mpi node (rank)
+int node_count = NONE;              // pocet vypocetnich uzlu
+int node_solver = 0;                // 1 pokud je proces viteznym resitelem
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -105,6 +141,41 @@ int read_file(char *filename) {
 
 	fclose(f);
 	return r;
+}
+
+void finalize() {
+	// vypsat statistiky
+
+	if(node == 0) {
+		srpprintf(node, "-----");
+		srpprintf(node, "uloha:");
+		dump_task(stdout, t);
+	}
+
+	if(node_solver) {
+		// vypis reseni
+		srpprintf(node, "prohledano stavu: %d (orezano: %d)", cc, co);
+
+		if(!solution) {
+			srpprintf(node, "reseni nebylo nalezeno!");
+		} else {
+			srpprintf(node, "reseni nalezeno p=%d", solution->p);
+			dump_hist(stdout, solution->h);
+		}
+
+		// uklid
+		stack_item_destroy(solution);
+		stack_destroy(s);
+		task_destroy(t);
+		task_destroy(tf);
+	}
+
+	// finalizace MPI
+	srpdebug("mpi", node, "finalizace <uzel=%d/%d>", node, node_count);
+	MPI_Finalize();
+
+	// konec
+	exit(EXIT_SUCCESS);
 }
 
 /**
@@ -162,9 +233,10 @@ int expand() {
 	//if(solution != NULL) {
 	if(mpi_best_p > 0 && it->p >= mpi_best_p) {
 		srpdebug("core", node, "expanze <orez, p=%d je horsi nez "
-			"nejlepsi p=%d>",
-		it->p, mpi_best_p);
+			"nejlepsi p=%d>", it->p, mpi_best_p);
 		stack_item_destroy(it);
+
+		co++;
 		return;
 	}
 
@@ -175,6 +247,8 @@ int expand() {
 			"prostoru q=%d>",
 			t->q);
 		stack_item_destroy(it);
+
+		co++;
 		return;
 	}
 
@@ -227,6 +301,7 @@ void mpi_solve_step() {
 
 	//porovnani
 	if(compare(tf, stack_top(s)->B)) {
+		/*
 		// na zasobniku je reseni ulohy
 		if(solution == NULL) {
 			// prvni reseni ulohy
@@ -246,6 +321,34 @@ void mpi_solve_step() {
 				srpdebug("core", node, "reseni <horsi, p=%d, o=+%d>",
 					solution->p, stack_top(s)->p - solution->p);
 			}
+		}
+		*/
+		// mpi_best_p muzu bud ziskat sam, nebo ho dostat od jineho stroje
+		// FIXME tohle lze vylepsit lepsi integraci mpi_best_p
+		// nejdriv si ulozim lokalni nejlepsi reseni
+		if(solution == NULL) {
+			// prvni reseni ulohy
+			solution = stack_pop(s);
+
+			srpdebug("core", node, "reseni <prvni, p=%d>", solution->p);
+		} else {
+			if(solution->p >= stack_top(s)->p) {
+				// lepsi reseni ulohy
+				srpdebug("core", node, "reseni <lepsi, p=%d, o=%d>",
+					stack_top(s)->p, solution->p - stack_top(s)->p);
+
+				stack_item_destroy(solution);
+				solution = stack_pop(s);
+			} else {
+				// horsi reseni ulohy
+				srpdebug("core", node, "reseni <horsi, p=%d, o=+%d>",
+					solution->p, stack_top(s)->p - solution->p);
+			}
+		}
+		// ted poresim mpi_best_p
+		if(mpi_best_p < 0 || mpi_best_p > solution->p) {
+			mpi_best_p = solution->p;
+			mpi_best_p_flag = 1;
 		}
 	}
 
@@ -286,7 +389,7 @@ int mpi_bcast_task() {
 		t = task_mpiunpack(b, l, 0);
 
 		assert(t);
-		srpdebug("mpi", node, "prijato zadani ulohy <n=%d, k=%d, q=%d>",
+		srpdebug("mpi", node, "prijeti zadani ulohy <n=%d, k=%d, q=%d>",
 			t->n, t->k, t->q);
 	}
 	free(b);
@@ -295,7 +398,27 @@ int mpi_bcast_task() {
 }
 
 /**
- * Odesle n-tinu vlastniho zasobniku prijemci dest.
+ * MPI odeslani pozadavku na dalsi praci.
+ */
+void mpi_send_request() {
+	assert(s);
+	assert(t);
+	int dest;       // cilovy uzel
+	int v = 1;
+
+	assert(stack_empty(s));
+
+	// vygenerovat nahodneho prijemce (krome me sameho)
+	dest = node;
+	while(dest == node)
+		dest = rand() % node_count;
+
+	srpdebug("mpi", node, "odeslani zadost o praci <dest=%d>", dest);
+	MPI_Send(&v, 1, MPI_UNSIGNED, dest, MSG_REQUEST, MPI_COMM_WORLD);
+}
+
+/**
+ * MPI odeslani n-tiny vlastniho zasobniku prijemci dest.
  */
 void mpi_send_stack(const int n, int dest) {
 	assert(t);
@@ -308,6 +431,10 @@ void mpi_send_stack(const int n, int dest) {
 
 	srpdebug("mpi", node, "odeslani zasobniku <s=%d, l=%db, dest=%d>",
 		sn->s, l, dest);
+
+	// ADUV
+	if(dest < node)
+		mpi_color = 1; // cerna
 
 	// poslat MSG_STACK s delkou zpravy se serializovanym zasobnikem
 	MPI_Send(&l, 1, MPI_INT, dest, MSG_STACK, MPI_COMM_WORLD);
@@ -332,7 +459,7 @@ void mpi_recv_stack(const int src) {
 	MPI_Recv(&l, 1, MPI_UNSIGNED, src, MSG_STACK,
 		MPI_COMM_WORLD, &mpi_status);
 
-	srpdebug("mpi", node, "prijem zasobniku <l=%db, src=%d>",
+	srpdebug("mpi", node, "prijeti zasobnik <l=%db, src=%d>",
 		l, mpi_status.MPI_SOURCE);
 
 	// naalokuju buffer a zahajim blokujici cekani na MSG_STACK_DATA
@@ -346,37 +473,256 @@ void mpi_recv_stack(const int src) {
 	stack_t *sn = stack_mpiunpack(b, t, l);
 	free(b);
 
-	srpdebug("mpi", node, "prijat zasobnik <s=%d>", sn->s);
+	srpdebug("mpi", node, "prijeti zasobnik <s=%d>", sn->s);
 
 	// sloucit zasobniky
 	stack_merge(s, sn);
-
-	// nastavit pocet pokusu o ziskani prace zpet na maximum
-	mpi_msg_try = 4 * node_count;
 }
 
 /**
- * MPI odeslani negativni odpoved.
+ * MPI odeslani negativni odpovedi.
  */
 void mpi_send_nostack(const int dest) {
 	assert(s);
 	assert(t);
+	int v = 1;
 
-	srpdebug("mpi", node, "odeslani negativni odpovedi <dest=%d>",
-		dest);
-	MPI_Send(0, 1, MPI_UNSIGNED, dest,
-		MSG_NOSTACK, MPI_COMM_WORLD);
+	srpdebug("mpi", node, "odeslani negativni odpovedi <dest=%d>", dest);
+	MPI_Send(&v, 1, MPI_UNSIGNED, dest, MSG_NOSTACK, MPI_COMM_WORLD);
+}
+
+/**
+ * MPI prijeti negativni odpovedi.
+ */
+void mpi_recv_nostack(const int src) {
+	MPI_Status mpi_status;
+	unsigned int v;
+
+	MPI_Recv(&v, 1, MPI_UNSIGNED, src, MSG_NOSTACK,
+		MPI_COMM_WORLD, &mpi_status);
+
+	srpdebug("mpi", node, "prijeti negativni odpovedi <src=%d>",
+		mpi_status.MPI_SOURCE);
 }
 
 /**
  * MPI obesilani uzlu lokalne dosazenou hodnotou p (optimalizace orezavani).
  */
-void mpi_send_solution() {
+void mpi_send_penalty() {
 	assert(s);
 	assert(t);
+	int i;
 
-	if(!solution)
+	if(mpi_best_p >= 0 && mpi_best_p_flag == 1) {
+		srpdebug("mpi", node, "odeslani p <p=%d>",
+			mpi_best_p);
+		mpi_best_p_flag = 0;
+
+		// odeslat standardni zpravu vsem krome me
+		for(i = 0; i < node_count; i++) {
+			if(i != node)
+				MPI_Send(&mpi_best_p, 1, MPI_UNSIGNED, i,
+					MSG_PENALTY, MPI_COMM_WORLD);
+		}
+	}
 }
+
+/**
+ * MPI prijem lepsi hodnoty penalizace (optimalizace orezavani).
+ */
+void mpi_recv_penalty(const int src) {
+	assert(t);
+	assert(s);
+	MPI_Status mpi_status;
+	unsigned int p;
+
+	MPI_Recv(&p, 1, MPI_UNSIGNED, src, MSG_PENALTY,
+		MPI_COMM_WORLD, &mpi_status);
+
+	if(p < mpi_best_p) {
+		srpdebug("mpi", node, "prijeti p <p=%d, src=%d>",
+			p, mpi_status.MPI_SOURCE);
+		mpi_best_p = p;
+		// nechci posilat pokud jsem chtel
+		mpi_best_p_flag = 0;
+	}
+}
+
+/**
+ * MPI odeslani informace o ukonceni vypoctu
+ */
+void mpi_send_finalize(int solver) {
+	assert(s);
+	assert(t);
+	int i;
+
+	// odeslat standardni zpravu vsem krome me
+	for(i = 0; i < node_count; i++) {
+		if(i != node) {
+			srpdebug("mpi", node, "odeslani konec vypoctu "
+				"<src=%d, dest=%d, solver=%d>",
+				node, i, solver);
+			MPI_Send(&solver, 1, MPI_INT, i, MSG_FINALIZE,
+				MPI_COMM_WORLD);
+		}
+	}
+}
+
+/**
+ * MPI prijeti informace o ukonceni vypoctu odpovedi.
+ */
+void mpi_recv_finalize(const int src) {
+	MPI_Status mpi_status;
+	int solver;
+
+	MPI_Recv(&solver, 1, MPI_INT, src, MSG_FINALIZE,
+		MPI_COMM_WORLD, &mpi_status);
+
+	srpdebug("mpi", node, "prijeti konec vypoctu <src=%d, solver=%d>",
+		mpi_status.MPI_SOURCE, solver);
+
+	if(solver == node) {
+		srpdebug("mpi", node, "uzel=%d je nejlepsim resitelem ulohy",
+			node);
+		// jsem vitezny resitel ulohy
+		node_solver = 1;
+	}
+
+}
+
+/**
+ * MPI odeslani pesku, signalizace ukonceni vypoctu.
+ */
+void mpi_send_token(const mpi_color_e color, const int solver,
+	const unsigned int p) {
+	int token[3];
+
+	srpdebug("mpi", node, "odeslani pesek <src=%d, dest=%d, solver=%d, "
+		"p=%d, color=%d>",
+		node, (node + 1) % node_count, solver, p, color);
+
+	// nastavime token
+	token[TOKEN_COLOR] = color;
+	token[TOKEN_SOLVER] = solver;
+	token[TOKEN_PENALTY] = p;
+
+	MPI_Send(&token, 3, MPI_INT, (node + 1) % node_count, MSG_TOKEN,
+		MPI_COMM_WORLD);
+}
+
+/**
+ * MPI prijem pesku.
+ */
+void mpi_recv_token(const int src) {
+	assert(s);
+	MPI_Status mpi_status;
+	int token[3];
+
+	MPI_Recv(&token, 3, MPI_INT, src, MSG_TOKEN,
+		MPI_COMM_WORLD, &mpi_status);
+	srpdebug("mpi", node, "prijeti pesek <src=%d, solver=%d, p=%d color=%d>",
+		src, token[TOKEN_SOLVER], token[TOKEN_PENALTY], token[TOKEN_COLOR]);
+
+	if(node == 0) {
+		// pesek dorazil zpet k uzlu 0
+		if(token[TOKEN_COLOR] == COLOR_WHITE) {
+			// je bily
+			// poslu zpravu o ukonceni vypoctu vsem, tedy i vitezi
+			mpi_send_finalize(token[TOKEN_SOLVER] != -1 ?
+				token[TOKEN_SOLVER] : 0);
+			// protoze zpravu neposilam sobe, musim si v pripade, ze jsem
+			// vyhral, nebo nenasel reseni pomoci nastavenim node_solver
+			if(token[TOKEN_SOLVER] == -1 || token[TOKEN_SOLVER] == 0)
+				node_solver = 1;
+
+			finalize();
+		} else {
+			// je cerny (dalsi kolecko)
+			mpi_idle = STATE_IDLE;
+		}
+	} else {
+		// pripravit se na odesilani pesku
+		// nelze to udelat primo, protoze nemam jistotu ze jsem STATE_IDLE
+		mpi_token_flag = 1;
+		mpi_token[TOKEN_COLOR] = token[TOKEN_COLOR];
+		mpi_token[TOKEN_SOLVER] = token[TOKEN_SOLVER];
+		mpi_token[TOKEN_PENALTY] = token[TOKEN_PENALTY];
+	}
+}
+
+/**
+ * MPI odeslani reseni. Reseni odesleme jen tehdy, mame-li lepsi p nez je
+ * mpi_best_p.
+ */
+/*
+void mpi_send_solution(const int dest) {
+	assert(t);
+	unsigned int v = 1;
+	unsigned int l;
+	char *b = NULL;
+
+	if(solution && solution->p <= mpi_best_p) {
+		b = stack_item_mpipack(&solution, t, &l);
+
+		srpdebug("mpi", node, "odeslani reseni <p=%d, l=%db>",
+			solution->p, l);
+
+		// odeslat delku bufferu
+		MPI_Send(&l, 1, MPI_UNSIGNED, 0, MSG_SOLUTION, MPI_COMM_WORLD);
+
+		// poslat serializovane reseni
+		MPI_Send(b, l, MPI_PACKED, 0, MSG_SOLUTION_DATA, MPI_COMM_WORLD);
+	}
+
+	srpdebug("mpi", node, "odeslani zadosti o vypis reseni <dest=%d>",
+		dest);
+
+	// odeslat delku bufferu
+	MPI_Send(&v, 1, MPI_UNSIGNED, dest, MSG_SOLUTION, MPI_COMM_WORLD);
+}
+*/
+
+/**
+ * MPI prijeti zadosti o vypis reseni.
+ */
+/*
+void mpi_recv_solution(const int src) {
+	assert(t);
+	assert(node = 0);
+	MPI_Status mpi_status;
+	unsigned int l;
+	char *b = NULL;
+
+	MPI_Recv(&l, 1, MPI_UNSIGNED, src, MSG_SOLUTION,
+		MPI_COMM_WORLD, &mpi_status);
+
+	srpdebug("mpi", node, "prijeti reseni <l=%db, src=%d>",
+		l, mpi_status.MPI_SOURCE);
+
+	// naalokuju buffer a zahajim blokujici cekani na MSG_SOLUTION_DATA
+	srpdebug("mpi", node, "cekani na zpravu <delka=%db>", l);
+	MPI_Probe(src, MSG_SOLUTION_DATA, MPI_COMM_WORLD,
+		&mpi_status);
+	b = (char *)utils_malloc(l * sizeof(char));
+	MPI_Recv(b, l, MPI_PACKED, src, MSG_SOLUTION_DATA,
+		MPI_COMM_WORLD, &mpi_status);
+
+	stack_item *it = stack_item_mpiunpack(b, t, l);
+	free(b);
+
+	srpdebug("mpi", node, "prijeti reseni <p=%d>", it->s);
+
+	// porovnani a prirazeni do lokalniho reseni
+	if(!solution) {
+		// prvni reseni
+		solution = it;
+	} else if(solution->p > it->p) {
+		// lepsi reseni
+		stack_item_destroy(solution);
+		solution = it;
+	}
+}
+*/
 
 /**
  * MPI inicializace vypoctu - rozeslani uvodnich ukolu 0-tym uzlem. Je mozne,
@@ -397,7 +743,7 @@ void mpi_solve_init() {
 	stack_push(s, it);
 
 	// rozresim ulohu tak, aby bylo co delit
-	while(s->s < 10 * node_count) {
+	while(s->s < node_count) {
 		srpdebug("mpi", node, "zasobnik je MELKY <s=%d uzlu=%d>",
 			s->s, node_count);
 
@@ -416,11 +762,10 @@ void mpi_solve_init() {
 	}
 }
 
-
 /**
  * Kontrola a zpracovani zprav pomoci MPI.
  */
-mpi_tag mpi_handle() {
+void mpi_handle() {
 	MPI_Status mpi_status;
 	int mpi_flag;
 	unsigned int l;
@@ -429,14 +774,21 @@ mpi_tag mpi_handle() {
 
 	MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_flag,
 		&mpi_status);
+
+	// odeslu nejnizsi nalezenou penalizaci (podmineno viz. telo funkce)
+	mpi_send_penalty();
+
 	if(mpi_flag) {
-		srpdebug("mpi", node, "zprava <tag=%d>", mpi_status.MPI_TAG);
+		srpdebug("msg", node, "zprava <tag=%d>", mpi_status.MPI_TAG);
 
 		switch(mpi_status.MPI_TAG) {
 		case MSG_REQUEST:
-			srpdebug("mpi", node, "MSG_REQUEST");
+			srpdebug("msg", node, "MSG_REQUEST");
 			MPI_Recv(&v, 1, MPI_UNSIGNED, mpi_status.MPI_SOURCE, MSG_REQUEST,
 				MPI_COMM_WORLD, &mpi_status);
+
+			srpdebug("mpi", node, "prijata zadost o praci <src=%d>",
+				mpi_status.MPI_SOURCE);
 
 			// TODO rozdelit praci a odpovedet MSG_STACK nebo MSG_NOSTACK
 			if(s->s > 1) {
@@ -447,40 +799,39 @@ mpi_tag mpi_handle() {
 			break;
 
 		case MSG_STACK:
-			srpdebug("mpi", node, "MSG_STACK");
+			srpdebug("msg", node, "MSG_STACK");
 			mpi_recv_stack(mpi_status.MPI_SOURCE);
 			break;
 
-		case MSG_STACK_DATA:
-			srpdebug("mpi", node, "MSG_STACK");
-			// toto je chyba, ukoncit proces
+		case MSG_NOSTACK:
+			srpdebug("msg", node, "MSG_NOSTACK");
+			mpi_recv_nostack(mpi_status.MPI_SOURCE);
 			break;
 
-		case MSG_NOSTACK:
-			srpdebug("mpi", node, "MSG_NOSTACK");
-			if(mpi_msg_try > 0)
-				// snizim pocet volnych pokusu
-				mpi_msg_try--;
-			else {
-				// odeslu peska
-			}
+		case MSG_PENALTY:
+			srpdebug("msg", node, "MSG_PENALTY");
+			mpi_recv_penalty(mpi_status.MPI_SOURCE);
 			break;
 
 		case MSG_TOKEN:
-			srpdebug("mpi", node, "MSG_TOKEN");
-			// pesek, pokud idlim necham ho byt, jinak...
+			srpdebug("msg", node, "MSG_TOKEN");
+			mpi_recv_token(mpi_status.MPI_SOURCE);
+			break;
+
+		case MSG_FINALIZE:
+			srpdebug("msg", node, "MSG_FINALIZE");
+			mpi_recv_finalize(mpi_status.MPI_SOURCE);
+			finalize();
 			break;
 
 		default:
 			// neznama zprava
-			srpprintf(stderr, "mpi", node, "neznama zprava!");
+			srpprintf(stderr, "msg", node, "neznama zprava");
 			exit(EXIT_FAILURE);
 		}
-	} else {
+	} /* else {
 		srpdebug("mpi", node, "zadne zpravy");
-	}
-
-	return MSG_UNKNOWN;
+	} */
 }
 
 /**
@@ -489,60 +840,72 @@ mpi_tag mpi_handle() {
 void mpi_solve() {
 	assert(s);
 	assert(t);
-	int msg_c = 149;
+	int msg_c = 0;
+	int idle_c = 0;
 
-	while(!work_done) {
-		msg_c++;
-		if(msg_c == mpi_msg_max) {
-			msg_c = 0;
-			mpi_handle();
-		}
+	while(1) {
+		// zasobnik neni prazdny
+		while(!stack_empty(s)) {
+			mpi_idle = STATE_BUSY;
+			//srpdebug("mpi", node, "uzel=%d PRACUJE", node);
 
-		if(!stack_empty(s)) {
+			// provadet reseni
 			mpi_solve_step();
-		} else {
-			work_done = 1;
-			/*
-			while(mpi_msg_try > 0) {
-				// posla
+
+			// osetrit pozadavky
+			msg_c++;
+			if(msg_c == MPI_MSG_MAX) {
+				msg_c = 0;
+				mpi_handle();
 			}
-			// poslu peska
-			*/
 		}
-	}
 
-	/*
-	srpdebug("core", node, "hledani reseni");
+		// zasobnik je prazdny
+		if(mpi_idle == STATE_BUSY)
+			mpi_idle = STATE_IDLE;
+		//srpdebug("mpi", node, "uzel=%d CEKA", node);
 
-	while(!stack_empty(s)) {
-		srpdebug("core", node, "hloubka: %d, prohledane stavy: %d",
-			stack_top(s)->d, cc);
+		// ADUV
+		if(node == 0 && mpi_idle == STATE_IDLE) {
+			// odeslani pesku a zahajeni cekani
+			mpi_color = COLOR_WHITE;
+			mpi_send_token(COLOR_WHITE, 
+				mpi_token[TOKEN_SOLVER],
+				mpi_token[TOKEN_PENALTY]);
+			mpi_idle = STATE_TOKEN;
+		}
 
-		if(compare(tf, stack_top(s)->B)) {
-			// na zasobniku je reseni ulohy
-			srpdebug("core", node, "nalezeno reseni p=%d", stack_top(s)->p);
-
-			if(solution == NULL) {
-				solution = stack_pop(s);
-				srpdebug("core", node, "reseni je: <prvni>");
-			} else {
-				if(solution->p > stack_top(s)->p) {
-					stack_item_destroy(solution);
-					solution = stack_pop(s);
-					srpdebug("core", node, "reseni je: <prub.nejlepsi>");
-				} else {
-					srpdebug("core", node, "reseni je: <horsi o=%d>",
-						stack_top(s)->p - solution->p);
+		// ADUV
+		if(node > 0 && mpi_token_flag == 1) {
+			// pokud mam lepsi reseni (NE mpi_best_p pro OREZ!), nahradim je v
+			// pesku vlastnimi hodnotami
+			if(solution)
+				if(mpi_token[TOKEN_PENALTY] > solution->p
+					|| mpi_token[TOKEN_PENALTY] == -1) {
+					mpi_token[TOKEN_SOLVER] = node;
+					mpi_token[TOKEN_PENALTY] = solution->p;
 				}
-			}
-			//dump_hist(stdout, stack_top(s)->h);
 
+			// odeslat modifikovany pesek
+			mpi_send_token(mpi_token[TOKEN_COLOR],
+				mpi_token[TOKEN_SOLVER],
+				mpi_token[TOKEN_PENALTY]);
+
+			mpi_color = COLOR_WHITE;
+			mpi_token_flag = 0;
 		}
-		if(stack_empty(s))
-			break;
-		expand();
+
+		if(mpi_idle == STATE_IDLE) {
+			// odeslani pozadavku na dalsi praci
+			idle_c++;
+			if(idle_c == MPI_IDLE_MAX) {
+				idle_c = 0;
+				mpi_send_request();
+			}
+		}
+
+		mpi_handle();
 	}
-	*/
 }
 
 /**
@@ -556,6 +919,9 @@ int main(int argc, char **argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &node_count);
 
 	srpdebug("mpi", node, "inicializace <uzel=%d/%d>", node, node_count);
+
+	// inicializace random seminka
+	srand(time(NULL) + getpid() + node);
 
 	// nacteni ulohy a distribuce provadi uzel 0
 	if(node == 0) {
@@ -582,110 +948,27 @@ int main(int argc, char **argv) {
 	tf = task_init(t->n, t->k, t->q);
 	task_setup(tf);
 
-	// inicializace uzlu pocatecnim zadanim
-	mpi_msg_try = 4 * node_count;
-	cc = 0;
-	if(node == 0)
-		mpi_solve_init();
+	// inicializace uzlu pocatecni praci
+	cc = 0; co = 0;
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	// inicializace pesku
+	mpi_token[TOKEN_SOLVER] = -1;
+	mpi_token[TOKEN_PENALTY] = -1;
 
-	if(node != 0) {
-		mpi_handle();
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-
-	/*
-	if(node == 1) {
-		int i;
-		for(i = 0; i < s->s; i++) {
-			srpdebug("mpi", node, "s->it[%d] d=%d p=%d", i, s->it[i].d, s->it[i].p);
-		}
-	}
-	*/
-
-	while(!stack_empty(s)) {
-		mpi_solve_step();
-	}
-
-	// spustit resici algoritmus na vsech uzlech
-	//mpi_solve();
-
-	/*
-	// uzel 0 zahaji vypocet (jediny ma pocatecni stav sachovnice)
 	if(node == 0) {
-		assert(s);
-
-		// pocatecni stav
-
-		// DEBUG
-		int i;
-		for(i=0; i < 3; i++) {
-			srpdebug("mpi", node, "%d. expanze", i+1);
-			expand();
-		}
-		// EOF: DEBUG
-
-		b = stack_mpipack(s, t, &l);
-		MPI_Send(&l, 1, MPI_UNSIGNED, 1, 1, MPI_COMM_WORLD);
-		MPI_Send(b, l, MPI_PACKED, 1, 2, MPI_COMM_WORLD);
+		mpi_solve_init();
 	}
 
-	if(node == 1) {
-		MPI_Recv(&l, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD, &stat);
-		srpdebug("mpi", node, "prijata velikost zpravy: %d", l);
+	// zaruci ze vsichni dostanou praci
+	MPI_Barrier(MPI_COMM_WORLD);
+	if(node > 0)
+		mpi_handle();
 
-		b = (char *)utils_malloc(l * sizeof(char));
-		MPI_Recv(b, l, MPI_PACKED, 0, 2, MPI_COMM_WORLD, &stat);
-		free(s);
-		s = stack_mpiunpack(b, t, l);
+	// resit ulohu
+	mpi_solve();
 
-		int i;
-		for(i = 0; i < s->s; i++) {
-			srpdebug("mpi", node, "s[%d] d=%d p=%d", i, s->it[i].d, s->it[i].p);
-		}
-
-		stack_t *sn;
-		sn = stack_divide(s, 2);
-
-		srpdebug("mpi", node, "Puvodni stack:");
-		for(i = 0; i < s->s; i++) {
-			srpdebug("mpi", node, "s[%d] d=%d p=%d", i, s->it[i].d, s->it[i].p);
-		}
-
-		srpdebug("mpi", node, "Novy stack:");
-		for(i = 0; i < sn->s; i++) {
-			srpdebug("mpi", node, "s[%d] d=%d p=%d", i, sn->it[i].d, sn->it[i].p);
-		}
-
-		stack_destroy(sn);
-		*/
-
-	// vypsat statistiky
-//	srpprintf(node, "-----");
-//	srpprintf(node, "uloha:");
-//	dump_task(stdout, t);
-
-	// FIXME node 0!
-	// vypis reseni
-	srpprintf(node, "prohledano stavu: %d", cc);
-
-	if(!solution) {
-		srpprintf(node, "reseni nebylo nalezeno!");
-	} else {
-		srpprintf(node, "reseni nalezeno p=%d", solution->p);
-		dump_hist(stdout, solution->h);
-	}
-
-	// uklid
-	stack_item_destroy(solution);
-	stack_destroy(s);
-	task_destroy(t);
-	task_destroy(tf);
-
-	// finalizace MPI
-	srpdebug("mpi", node, "finalizace <uzel=%d/%d>", node, node_count);
-	MPI_Finalize();
-	return EXIT_SUCCESS;
+	// v mpi_solve je nekonecna smycka, konec se resi volanim funkce
+	// finalize();
+	// this is another brick in the -Wall
+	return EXIT_FAILURE;
 }

@@ -19,7 +19,11 @@
  */
 #define DEBUG
 //#define DEBUG_COMP "dump hist task stack utils mpi nompi core msg gen"
-#define DEBUG_COMP "mpi msg"
+#define DEBUG_COMP "mpi msg stack"
+
+#ifndef DEBUG
+#define NDEBUG
+#endif /* DEBUG */
 
 #define NONE -1                             /* don't use node */
 

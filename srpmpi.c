@@ -30,8 +30,8 @@ stack_t *s;
 hist_t *h;
 move_t m;
 stack_item_t *solution;             // nejlepsi nalezene reseni
-unsigned int cc;                    // pocitadlo analyzovanych stavu
-unsigned int co;                    // pocitadlo orezanych stavu
+unsigned long long int cc;          // pocitadlo analyzovanych stavu
+unsigned long long int co;          // pocitadlo orezanych stavu
 double tbeg;                        // pocatecni cas
 double tend;                        // konecny cas
 
@@ -76,8 +76,8 @@ typedef enum {
 } mpi_color_e;
 
 // konstanty
-const int MPI_MSG_MAX = 150;
-const int MPI_IDLE_MAX = 1000;
+const int MPI_MSG_MAX = 500;
+const int MPI_IDLE_MAX = 5000;
 
 mpi_state_e mpi_idle = 1;           // stav procesu
 unsigned int mpi_best_p = -1;       // nejlepsi znama penalizace (orez)
@@ -170,7 +170,7 @@ void finalize() {
 			dump_hist(stdout, solution->h);
 		}
 
-		srpprintf(node, "spotrebovany cas: %f", tend-tbeg);
+		srpprintf(node, "cas: %fs", tend-tbeg);
 
 		// uklid
 		stack_item_destroy(solution);

@@ -6,4 +6,4 @@
 #$ -o ./stdout/
 #$ -V
 
-mpirun -np ${NSLOTS} ./srpmpi ${1} > ./logs/ompi${NSLOTS}-inf_${1}.log
+mpirun -np ${NSLOTS} ./srpmpi ./inst/${1} > ./logs/$(date +%y%m%d%H%M%S)-ompi${NSLOTS}-inf_${1}.log

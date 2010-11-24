@@ -18,8 +18,8 @@
  * Rizeni ladeni.
  */
 #define DEBUG
-//#define DEBUG_COMP "dump hist task stack utils mpi nompi core msg gen"
-#define DEBUG_COMP "mpi msg stack"
+//#define DEBUG_COMP "watch dump hist task stack utils mpi nompi core msg gen"
+#define DEBUG_COMP "mpi msg"
 
 #ifndef DEBUG
 #define NDEBUG

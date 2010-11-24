@@ -4,9 +4,9 @@ MPICC=mpicc
 MPILIBS=
 
 # Debugging
-CFLAGS=-g
+#CFLAGS=-g
 # Release
-#CFLAGS=
+CFLAGS=
 
 all: srpgen srpnompi srpmpi
 

@@ -221,6 +221,7 @@ stack_t * stack_init() {
 
 	// nastaveni velikosti
 	s->s = 0;
+	s->s_real = 0;
 	s->st = STACK_N;
 
 	/*
@@ -238,7 +239,7 @@ void stack_destroy(stack_t *s) {
 	if(!s)
 		return;
 
-	// nelze pouzit stack_item_destroy (alokovane pole).
+	// nelze pouzit stack_item_destroy (alokovane pole)
 	if(s->it) {
 		for(i = 0; i < s->st; i++) {
 			// FIXME duplicitni kod, sjednotit do stack_item_clear()
@@ -264,7 +265,34 @@ void stack_resize(stack_t *s, unsigned int sn) {
 		sizeof(stack_item_t) * (s->st + sn));
 	s->st += sn;
 
-	srpdebug("stack", node, "realokace stacku s=%d st=%d", s->s, s->st);
+	srpdebug("stack", node, "realokace zasobniku s=%d st=%d", s->s, s->st);
+}
+
+/**
+ * Preskocit vsechny spinave zaznamy a snizit o ne s->s. Pri vhodnem pouziti
+ * teto inline funkce snizime cas vypoctu o defragmentaci zasobniku.
+ */
+inline int stack_overleap(stack_t *s) {
+	assert(s);
+
+	int n = 0;
+
+	while(s->s > 0 && s->it[s->s - 1].dirty != 0) {
+		// pokud preskakuju musim zaznam vycistit
+		s->it[s->s - 1].dirty = 0;
+		s->it[s->s - 1].d = 0;
+		s->it[s->s - 1].p = 0;
+		s->it[s->s - 1].h = NULL;
+		s->it[s->s - 1].B = NULL;
+
+		s->s--;
+		n++;
+	}
+
+#ifdef DEBUG
+	if(n > 0)
+		srpdebug("stack", node, "preskoceno n=%d polozek zasobniku", n);
+#endif /* DEBUG */
 }
 
 /**
@@ -273,7 +301,13 @@ void stack_resize(stack_t *s, unsigned int sn) {
 int stack_empty(stack_t *s)
 {
 	assert(s);
+
+	/*
+	stack_overleap(s);
 	return s->s == 0 ? 1 : 0;
+	*/
+
+	return s->s_real == 0 ? 1 : 0;
 }
 
 /**
@@ -284,12 +318,14 @@ int stack_push(stack_t *s, stack_item_t it)
 {
 	assert(s);
 
+	stack_overleap(s);
+
 	// doalokovat pamet je-li treba
 	if(s->s == s->st - 1) {
 		stack_resize(s, STACK_N);
 	}
-
 	s->s++;
+	s->s_real++; // realna velikost
 
 	// pri pushi nikdy neni zaznam spinavy
 	s->it[s->s - 1].dirty = 0;
@@ -310,6 +346,8 @@ stack_item_t * stack_top(stack_t *s)
 {
 	assert(s);
 
+	stack_overleap(s);
+
 	if(s->s > 0)
 		return &s->it[s->s - 1];
 
@@ -326,29 +364,35 @@ stack_item_t * stack_pop(stack_t *s)
 	assert(s);
 	stack_item_t *it = NULL, *itp;
 
+	stack_overleap(s);
+
 	if(s->s > 0) {
 		itp = &s->it[s->s - 1];
 		it = stack_item_init(itp->d, itp->p, itp->h, itp->B);
 
 		// uklid po zaznamu
+		itp->dirty = 0;
 		itp->d = 0;
 		itp->p = 0;
 		itp->h = NULL;
 		itp->B = NULL;
+
+		// uprava velikosti
 		s->s--;
+		s->s_real--;
 	}
 
 	return it;
 }
 
 /**
- * Tato funkce ukradne ze stacku i-ty prvek. Pouziva se pouze pri deleni
+ * Tato funkce "ukradne" ze zasobniku i-ty prvek. Pouziva se pouze pri deleni
  * zasobniku. Zpusobi nekonzistenci struktury (dira nema zadne vlastnosti
  * typicke pro stack_item_t a je oznacena jako dirty, aby ji funkce
  * stack_defrag mohla odstranit.
  * Odstraneni nelze ucinit rovnou, protoze by to zpusobilo nekonzistence
  * v indexech.
- * \
+ * \param  i    index kradeneho prvku ve skutecnem poli (tedy mezi 0 a s->s)
  * \returns     vyjmuty zaznam ze zasobniku
  * \see stack_defrag()
  */
@@ -367,13 +411,16 @@ stack_item_t * stack_steal(stack_t *s, const int i)
 		itp->p = 0;
 		itp->h = NULL;
 		itp->B = NULL;
+
+		// zmensim pocet zaznamu
+		s->s_real--;
 	}
 
 	return it;
 }
 
 /**
- * Spocte delku zasobniku v bytech.
+ * Spocte delku zasobniku v bytech (pouze nespinave zaznamy).
  */
 inline size_t stack_sizeof(const stack_t *s, const task_t *t) {
 	assert(s);
@@ -384,16 +431,18 @@ inline size_t stack_sizeof(const stack_t *s, const task_t *t) {
 	l += sizeof(unsigned int);          // s->s
 	// zaznamy zasobniku
 	for(i = 0; i < s->s; i++) {
-		l += sizeof(unsigned int) +     // s->it[i]->d
-			sizeof(unsigned int);       // s->it[i]->p
+		if(s->it[i].dirty == 0) {
+			l += sizeof(unsigned int) + // s->it[i]->d
+				sizeof(unsigned int);   // s->it[i]->p
 
-		// historie tahu
-		l += sizeof(unsigned int);      // s->it[i]->h->l
-		l += s->it[i].h->l * 
-			(4 * sizeof(int));          // s->it[i]->h->l * 2*{x,y}
+			// historie tahu
+			l += sizeof(unsigned int);  // s->it[i]->h->l
+			l += s->it[i].h->l *
+				(4 * sizeof(int));      // s->it[i]->h->l * 2*{x,y}
 
-		// konfigurace sachovnice
-		l += t->k * (2 * sizeof(int));  // t->k * {x,y}
+			// konfigurace sachovnice
+			l += t->k * (2 * sizeof(int));  // t->k * {x,y}
+		}
 	}
 
 	return l;
@@ -420,6 +469,7 @@ int stack_defrag(stack_t *s) {
 	}
 	// od sn do s musim vyprazdnit polozky (presun puvodnich der nakonec)
 	for(i = sn; i < s->s; i++) {
+		s->it[i].dirty = 0;
 		s->it[i].d = 0;
 		s->it[i].p = 0;
 		s->it[i].h = NULL;
@@ -450,7 +500,7 @@ stack_t * stack_divide(stack_t *s, const int n) {
 	unsigned int l;                 // delka useku mezi di[0] a di[1]
 
 	int init = 1;                   // pomocna promenna pro inicializaci
-	int i = 0, j = 0;
+	int i = 0, j = 0, k = 0;
 
 	sr = stack_init();
 
@@ -464,13 +514,31 @@ stack_t * stack_divide(stack_t *s, const int n) {
 			// osetreni krajni meze (zacatek)
 			if(!init) {
 				l = di[1] - di[0] + 1; // index od 0
-				assert(l > 0);
+
+				// odecist spinave zaznamy
+				for(j = di[0]; j < di[1]; j++) {
+					if(s->it[j].dirty != 0)
+						l--;
+				}
+
+				//assert(l > 0);
 
 				srpdebug("stack", node, "delena hloubka <d=%d, %d:%d, l=%d, m=%d>",
 					d, di[0], di[1], l, (l/n));
-				for(j = di[0]; j < di[0]+(l/n); j++) {
-					it = stack_steal(s, j);
+
+				k = di[0] - 1;  // aktualni index v ramci celeho zasobniku
+				j = 0;          // pocet ukradenych prvku
+				//for(j = di[0]; j < di[0]+(l/n); j++) {
+				while(j < l/n) {
+					k++;
+					// preskocit spinavy zaznam
+					if(s->it[k].dirty != 0) {
+						srpdebug("stack", node, "n");
+						continue;
+					}
+
 					// vlozit "ukradenou" polozku do noveho zasobniku
+					it = stack_steal(s, k);
 					stack_push(sr, (*it));
 
 					// uvolnit strukturu polozky zasobniku (nikoliv jeji B a h
@@ -478,8 +546,9 @@ stack_t * stack_divide(stack_t *s, const int n) {
 					it->h = NULL;
 					it->B = NULL;
 					stack_item_destroy(it);
-					// TODO toto jsem presouval do tela cyklu, muze byt
-					// potencalni zdroj problemu
+
+					// zvysit pocet ukradenych polozek
+					j++;
 				}
 			}
 			d = s->it[i].d;
@@ -492,7 +561,7 @@ stack_t * stack_divide(stack_t *s, const int n) {
 
 
 	// defragmentace puvodniho zasobniku
-	stack_defrag(s);
+	//stack_defrag(s);
 
 	return sr;
 }
@@ -553,40 +622,42 @@ char * stack_mpipack(const stack_t *s, const task_t *t, int *l) {
 
 	// zaznamy zasobniku ve tvaru d,p,historie<l,tahy<xz,yz,xdo,ydo>>,B<x,y>
 	for(i = 0; i < s->s; i++) {
-		// zaznam
-		// hloubka ve stavovem prostoru, celkova penalizace
-		// it->d, it->p
-		MPI_Pack((void *)&s->it[i].d, 1, MPI_UNSIGNED, b, *l, &pos,
-			MPI_COMM_WORLD);
-		MPI_Pack((void *)&s->it[i].p, 1, MPI_UNSIGNED, b, *l, &pos,
-			MPI_COMM_WORLD);
+		// zaznam (pouze cisty)
+		if(s->it[i].dirty == 0) {
+			// hloubka ve stavovem prostoru, celkova penalizace
+			// it->d, it->p
+			MPI_Pack((void *)&s->it[i].d, 1, MPI_UNSIGNED, b, *l, &pos,
+				MPI_COMM_WORLD);
+			MPI_Pack((void *)&s->it[i].p, 1, MPI_UNSIGNED, b, *l, &pos,
+				MPI_COMM_WORLD);
 
-		// historie tahu
-		// delka historie tahu
-		// it->h->l
-		MPI_Pack((void *)&s->it[i].h->l, 1, MPI_UNSIGNED, b, *l, &pos,
-			MPI_COMM_WORLD);
+			// historie tahu
+			// delka historie tahu
+			// it->h->l
+			MPI_Pack((void *)&s->it[i].h->l, 1, MPI_UNSIGNED, b, *l, &pos,
+				MPI_COMM_WORLD);
 
-		// jednotlive tahy v ramci historie tahu
-		// it->h->h
-		for(j = 0; j < s->it[i].h->l; j++) {
-			MPI_Pack((void *)&s->it[i].h->h[j][FROM].x, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
-			MPI_Pack((void *)&s->it[i].h->h[j][FROM].y, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
-			MPI_Pack((void *)&s->it[i].h->h[j][TO].x, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
-			MPI_Pack((void *)&s->it[i].h->h[j][TO].y, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
-		}
+			// jednotlive tahy v ramci historie tahu
+			// it->h->h
+			for(j = 0; j < s->it[i].h->l; j++) {
+				MPI_Pack((void *)&s->it[i].h->h[j][FROM].x, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+				MPI_Pack((void *)&s->it[i].h->h[j][FROM].y, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+				MPI_Pack((void *)&s->it[i].h->h[j][TO].x, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+				MPI_Pack((void *)&s->it[i].h->h[j][TO].y, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+			}
 
-		// konfigurace sachovnice
-		// it->B
-		for(j = 0; j < t->k; j++) {
-			MPI_Pack((void *)&s->it[i].B[j].x, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
-			MPI_Pack((void *)&s->it[i].B[j].y, 1, MPI_INT, b,
-				*l, &pos, MPI_COMM_WORLD);
+			// konfigurace sachovnice
+			// it->B
+			for(j = 0; j < t->k; j++) {
+				MPI_Pack((void *)&s->it[i].B[j].x, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+				MPI_Pack((void *)&s->it[i].B[j].y, 1, MPI_INT, b,
+					*l, &pos, MPI_COMM_WORLD);
+			}
 		}
 	}
 
@@ -658,3 +729,9 @@ stack_t * stack_mpiunpack(const char *b, const task_t *t, const int l) {
 	return s;
 }
 #endif /* MPI */
+
+#ifdef STACK_TEST
+/**
+ * Unit test zasobniku.
+ */
+#endif /* STACK_TEST */

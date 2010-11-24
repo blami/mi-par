@@ -35,7 +35,8 @@ typedef struct {
  */
 typedef struct {
 	stack_item_t *it;           // pole zaznamu
-	unsigned int s;             // velikost pouziteho zasobniku
+	unsigned int s;             // velikost pouziteho zasobniku (VCETNE FRAGMENTACE)
+	unsigned int s_real;        // pocet skutecnych polozek (BEZ FRAGMENTACE)
 	unsigned int st;            // celkova velikost zasobniku
 } stack_t;
 
@@ -46,7 +47,7 @@ extern stack_t *        stack_init();
 extern void             stack_destroy(stack_t *s);
 extern int              stack_empty(stack_t *s);
 extern int              stack_push(stack_t *s, stack_item_t it);
-extern stack_item_t *   stack_top(stack_t *s); // vraci ukazatel na stackovy
+extern stack_item_t *   stack_top(stack_t *s); // vraci ukazatel na zasobnik
 extern stack_item_t *   stack_pop(stack_t *s); // vraci ukazatel na novou instanci (zkopiruje)
 extern inline size_t    stack_sizeof(const stack_t *s, const task_t *t);
 extern stack_t *        stack_divide(stack_t *ss, const int n);

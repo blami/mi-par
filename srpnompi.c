@@ -14,6 +14,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <assert.h>
+#include <time.h>
 #include "srpprint.h"
 #include "srputils.h"
 #include "srptask.h"
@@ -27,10 +28,12 @@ stack_t *s;
 hist_t *h;
 move_t m;
 stack_item_t *solution;     // nejlepsi nalezene reseni
-unsigned int cc;            // pocitadlo analyzovanych stavu
-unsigned int co;            // pocitadlo orezanych stavu
+unsigned long long int cc;  // pocitadlo analyzovanych stavu
+unsigned long long int co;  // pocitadlo orezanych stavu
+double tbeg;
+double tend;
 
-int node = -1;
+int node = NONE;
 
 /**
  * Zpracovat prepinace vcetne overeni spravnosti.
@@ -229,6 +232,7 @@ void solve() {
 	stack_push(s, it);
 
 	while(!stack_empty(s)) {
+
 		srpdebug("core", node, "hloubka: %d, prohledane stavy: %d",
 			stack_top(s)->d, cc);
 
@@ -282,7 +286,11 @@ int main(int argc, char **argv) {
 	tf = task_init(t->n, t->k, t->q);
 	task_setup(tf);
 
+	tbeg = clock();
+
 	solve();
+
+	tend = clock();
 
 	// vypsat statistiky
 	srpprintf(node, "-----");
@@ -296,6 +304,7 @@ int main(int argc, char **argv) {
 	} else {
 		srpprintf(node, "reseni nalezeno p=%d", solution->p);
 		dump_hist(stdout, solution->h);
+		srpprintf(node, "cas: %fs", (double)((tend - tbeg) / CLOCKS_PER_SEC));
 	}
 
 	stack_item_destroy(solution);

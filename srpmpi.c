@@ -32,6 +32,8 @@ move_t m;
 stack_item_t *solution;             // nejlepsi nalezene reseni
 unsigned int cc;                    // pocitadlo analyzovanych stavu
 unsigned int co;                    // pocitadlo orezanych stavu
+double tbeg;                        // pocatecni cas
+double tend;                        // konecny cas
 
 /**
  * Zpravy MPI
@@ -152,6 +154,11 @@ void finalize() {
 		dump_task(stdout, t);
 	}
 
+	// sesynchronizovat pozici v programu
+	// rezie uklidu a vypisu uz me nezajima
+	MPI_Barrier(MPI_COMM_WORLD);
+	tend = MPI_Wtime();
+
 	if(node_solver) {
 		// vypis reseni
 		srpprintf(node, "prohledano stavu: %d (orezano: %d)", cc, co);
@@ -162,6 +169,8 @@ void finalize() {
 			srpprintf(node, "reseni nalezeno p=%d", solution->p);
 			dump_hist(stdout, solution->h);
 		}
+
+		srpprintf(node, "spotrebovany cas: %f", tend-tbeg);
 
 		// uklid
 		stack_item_destroy(solution);
@@ -743,9 +752,9 @@ void mpi_solve_init() {
 	stack_push(s, it);
 
 	// rozresim ulohu tak, aby bylo co delit
-	while(s->s < node_count) {
+	while(s->s_real < node_count) {
 		srpdebug("mpi", node, "zasobnik je MELKY <s=%d uzlu=%d>",
-			s->s, node_count);
+			s->s_real, node_count);
 
 		mpi_solve_step();
 		if(stack_empty(s))
@@ -755,7 +764,7 @@ void mpi_solve_init() {
 	// rozeslat zpravy
 	if(!stack_empty(s)) {
 		srpdebug("mpi", node, "zasobnik je OK, "
-			"distribuce <s=%d uzlu=%d>", s->s, node_count);
+			"distribuce <s=%d uzlu=%d>", s->s_real, node_count);
 		for(i = 1; i < node_count; i++) {
 			mpi_send_stack(node_count - i + 1, i);
 		}
@@ -791,7 +800,7 @@ void mpi_handle() {
 				mpi_status.MPI_SOURCE);
 
 			// TODO rozdelit praci a odpovedet MSG_STACK nebo MSG_NOSTACK
-			if(s->s > 1) {
+			if(s->s_real > 1) {
 				mpi_send_stack(2, mpi_status.MPI_SOURCE);
 			} else {
 				mpi_send_nostack(mpi_status.MPI_SOURCE);
@@ -919,6 +928,10 @@ int main(int argc, char **argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &node_count);
 
 	srpdebug("mpi", node, "inicializace <uzel=%d/%d>", node, node_count);
+
+	// vsichni si poznamenaji cas spusteni tbeg
+	MPI_Barrier(MPI_COMM_WORLD);
+	tbeg = MPI_Wtime();
 
 	// inicializace random seminka
 	srand(time(NULL) + getpid() + node);

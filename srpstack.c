@@ -82,11 +82,11 @@ inline size_t stack_item_sizeof(const stack_item_t *it, const task_t *t) {
 	return l;
 }
 
-
 #ifdef MPI
 /**
  * Serializovat zaznam zasobniku
  */
+/*
 char * stack_item_mpipack(const stack_item_t *it, const task_t *t, int *l) {
 	assert(it);
 	assert(t);
@@ -139,6 +139,7 @@ char * stack_item_mpipack(const stack_item_t *it, const task_t *t, int *l) {
 
 	return b;
 }
+*/
 
 /**
  * De-serializovat zaznam zasobniku po prijmu pomoci MPI.
@@ -205,7 +206,6 @@ stack_item_t * stack_mpiunpack(const char *b, const task_t *t, const int l) {
 }
 */
 #endif /* MPI */
-
 
 /**
  * Inicializace struktury zasobniku.

@@ -1,0 +1,79 @@
+6;
+21;
+6;
+0:0;1:0;2:0;3:0;4:0;5:0;0:1;1:1;2:1;3:1;4:1;0:2;3:3;2:2;3:2;0:3;2:5;4:4;0:4;1:4;1:3;
+5;2;0;5;4;2;9;0;5;3;9;7;7;5;1;7;9;7;4;7;8;5;2;8;8;5;8;0;3;5;0;6;7;3;8;3;
+10168 srpdump.c:119 dump_task(): n=6,k=21,q=6
+10168 srpdump.c:122 dump_task(): B:
+10168 srpdump.c:124 dump_task(): 1. 0:0
+10168 srpdump.c:124 dump_task(): 2. 1:0
+10168 srpdump.c:124 dump_task(): 3. 2:0
+10168 srpdump.c:124 dump_task(): 4. 3:0
+10168 srpdump.c:124 dump_task(): 5. 4:0
+10168 srpdump.c:124 dump_task(): 6. 5:0
+10168 srpdump.c:124 dump_task(): 7. 0:1
+10168 srpdump.c:124 dump_task(): 8. 1:1
+10168 srpdump.c:124 dump_task(): 9. 2:1
+10168 srpdump.c:124 dump_task(): 10. 3:1
+10168 srpdump.c:124 dump_task(): 11. 4:1
+10168 srpdump.c:124 dump_task(): 12. 0:2
+10168 srpdump.c:124 dump_task(): 13. 3:3
+10168 srpdump.c:124 dump_task(): 14. 2:2
+10168 srpdump.c:124 dump_task(): 15. 3:2
+10168 srpdump.c:124 dump_task(): 16. 0:3
+10168 srpdump.c:124 dump_task(): 17. 2:5
+10168 srpdump.c:124 dump_task(): 18. 4:4
+10168 srpdump.c:124 dump_task(): 19. 0:4
+10168 srpdump.c:124 dump_task(): 20. 1:4
+10168 srpdump.c:124 dump_task(): 21. 1:3
+10168 srpdump.c:128 dump_task(): S:
+10168 srpdump.c:159 dump_board(): ######
+10168 srpdump.c:159 dump_board(): #####.
+10168 srpdump.c:159 dump_board(): #.##..
+10168 srpdump.c:159 dump_board(): ##.#..
+10168 srpdump.c:159 dump_board(): ##..#.
+10168 srpdump.c:159 dump_board(): ..#...
+10168 srpdump.c:132 dump_task(): P:
+10168 srpdump.c:137 dump_task(): 0:0=5
+10168 srpdump.c:137 dump_task(): 1:0=2
+10168 srpdump.c:137 dump_task(): 2:0=0
+10168 srpdump.c:137 dump_task(): 3:0=5
+10168 srpdump.c:137 dump_task(): 4:0=4
+10168 srpdump.c:137 dump_task(): 5:0=2
+10168 srpdump.c:137 dump_task(): 0:1=9
+10168 srpdump.c:137 dump_task(): 1:1=0
+10168 srpdump.c:137 dump_task(): 2:1=5
+10168 srpdump.c:137 dump_task(): 3:1=3
+10168 srpdump.c:137 dump_task(): 4:1=9
+10168 srpdump.c:137 dump_task(): 5:1=7
+10168 srpdump.c:137 dump_task(): 0:2=7
+10168 srpdump.c:137 dump_task(): 1:2=5
+10168 srpdump.c:137 dump_task(): 2:2=1
+10168 srpdump.c:137 dump_task(): 3:2=7
+10168 srpdump.c:137 dump_task(): 4:2=9
+10168 srpdump.c:137 dump_task(): 5:2=7
+10168 srpdump.c:137 dump_task(): 0:3=4
+10168 srpdump.c:137 dump_task(): 1:3=7
+10168 srpdump.c:137 dump_task(): 2:3=8
+10168 srpdump.c:137 dump_task(): 3:3=5
+10168 srpdump.c:137 dump_task(): 4:3=2
+10168 srpdump.c:137 dump_task(): 5:3=8
+10168 srpdump.c:137 dump_task(): 0:4=8
+10168 srpdump.c:137 dump_task(): 1:4=5
+10168 srpdump.c:137 dump_task(): 2:4=8
+10168 srpdump.c:137 dump_task(): 3:4=0
+10168 srpdump.c:137 dump_task(): 4:4=3
+10168 srpdump.c:137 dump_task(): 5:4=5
+10168 srpdump.c:137 dump_task(): 0:5=0
+10168 srpdump.c:137 dump_task(): 1:5=6
+10168 srpdump.c:137 dump_task(): 2:5=7
+10168 srpdump.c:137 dump_task(): 3:5=3
+10168 srpdump.c:137 dump_task(): 4:5=8
+10168 srpdump.c:137 dump_task(): 5:5=3
+10168 srpdump.c:171 dump_hist(): historie tahu:
+10168 srpdump.c:181 dump_hist(): 1. 2:3->4:4
+10168 srpdump.c:181 dump_hist(): 2. 1:2->3:3
+10168 srpdump.c:181 dump_hist(): 3. 1:4->3:5
+10168 srpdump.c:181 dump_hist(): 4. 3:5->1:4
+10168 srpdump.c:181 dump_hist(): 5. 1:3->2:5
+10168 srpdump.c:181 dump_hist(): 6. 0:5->1:3

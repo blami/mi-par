@@ -1,0 +1,81 @@
+8755 srpnompi.c:296 main(): -----
+8755 srpnompi.c:297 main(): uloha:
+8755 srpdump.c:119 dump_task(): n=7,k=8,q=7
+8755 srpdump.c:122 dump_task(): B:
+8755 srpdump.c:124 dump_task(): 1. 1:2
+8755 srpdump.c:124 dump_task(): 2. 0:2
+8755 srpdump.c:124 dump_task(): 3. 4:1
+8755 srpdump.c:124 dump_task(): 4. 5:1
+8755 srpdump.c:124 dump_task(): 5. 5:2
+8755 srpdump.c:124 dump_task(): 6. 5:0
+8755 srpdump.c:124 dump_task(): 7. 6:0
+8755 srpdump.c:124 dump_task(): 8. 3:2
+8755 srpdump.c:128 dump_task(): S:
+8755 srpdump.c:159 dump_board(): .....##
+8755 srpdump.c:159 dump_board(): ....##.
+8755 srpdump.c:159 dump_board(): ##.#.#.
+8755 srpdump.c:159 dump_board(): .......
+8755 srpdump.c:159 dump_board(): .......
+8755 srpdump.c:159 dump_board(): .......
+8755 srpdump.c:159 dump_board(): .......
+8755 srpdump.c:132 dump_task(): P:
+8755 srpdump.c:137 dump_task(): 0:0=4
+8755 srpdump.c:137 dump_task(): 1:0=4
+8755 srpdump.c:137 dump_task(): 2:0=0
+8755 srpdump.c:137 dump_task(): 3:0=1
+8755 srpdump.c:137 dump_task(): 4:0=1
+8755 srpdump.c:137 dump_task(): 5:0=2
+8755 srpdump.c:137 dump_task(): 6:0=7
+8755 srpdump.c:137 dump_task(): 0:1=1
+8755 srpdump.c:137 dump_task(): 1:1=3
+8755 srpdump.c:137 dump_task(): 2:1=7
+8755 srpdump.c:137 dump_task(): 3:1=7
+8755 srpdump.c:137 dump_task(): 4:1=1
+8755 srpdump.c:137 dump_task(): 5:1=7
+8755 srpdump.c:137 dump_task(): 6:1=6
+8755 srpdump.c:137 dump_task(): 0:2=9
+8755 srpdump.c:137 dump_task(): 1:2=2
+8755 srpdump.c:137 dump_task(): 2:2=5
+8755 srpdump.c:137 dump_task(): 3:2=5
+8755 srpdump.c:137 dump_task(): 4:2=2
+8755 srpdump.c:137 dump_task(): 5:2=8
+8755 srpdump.c:137 dump_task(): 6:2=1
+8755 srpdump.c:137 dump_task(): 0:3=2
+8755 srpdump.c:137 dump_task(): 1:3=0
+8755 srpdump.c:137 dump_task(): 2:3=1
+8755 srpdump.c:137 dump_task(): 3:3=3
+8755 srpdump.c:137 dump_task(): 4:3=6
+8755 srpdump.c:137 dump_task(): 5:3=3
+8755 srpdump.c:137 dump_task(): 6:3=7
+8755 srpdump.c:137 dump_task(): 0:4=4
+8755 srpdump.c:137 dump_task(): 1:4=2
+8755 srpdump.c:137 dump_task(): 2:4=8
+8755 srpdump.c:137 dump_task(): 3:4=1
+8755 srpdump.c:137 dump_task(): 4:4=3
+8755 srpdump.c:137 dump_task(): 5:4=3
+8755 srpdump.c:137 dump_task(): 6:4=7
+8755 srpdump.c:137 dump_task(): 0:5=3
+8755 srpdump.c:137 dump_task(): 1:5=3
+8755 srpdump.c:137 dump_task(): 2:5=2
+8755 srpdump.c:137 dump_task(): 3:5=2
+8755 srpdump.c:137 dump_task(): 4:5=1
+8755 srpdump.c:137 dump_task(): 5:5=6
+8755 srpdump.c:137 dump_task(): 6:5=5
+8755 srpdump.c:137 dump_task(): 0:6=8
+8755 srpdump.c:137 dump_task(): 1:6=3
+8755 srpdump.c:137 dump_task(): 2:6=1
+8755 srpdump.c:137 dump_task(): 3:6=0
+8755 srpdump.c:137 dump_task(): 4:6=2
+8755 srpdump.c:137 dump_task(): 5:6=7
+8755 srpdump.c:137 dump_task(): 6:6=1
+8755 srpnompi.c:300 main(): prohledano stavu: 833427413 (orezano: 807026628)
+8755 srpnompi.c:305 main(): reseni nalezeno p=11
+8755 srpdump.c:171 dump_hist(): historie tahu:
+8755 srpdump.c:181 dump_hist(): 1. 3:2->1:3
+8755 srpdump.c:181 dump_hist(): 2. 1:3->0:1
+8755 srpdump.c:181 dump_hist(): 3. 5:2->4:0
+8755 srpdump.c:181 dump_hist(): 4. 5:1->3:0
+8755 srpdump.c:181 dump_hist(): 5. 4:1->2:0
+8755 srpdump.c:181 dump_hist(): 6. 0:2->1:0
+8755 srpdump.c:181 dump_hist(): 7. 1:2->0:0
+8755 srpnompi.c:307 main(): cas: 691.190000s

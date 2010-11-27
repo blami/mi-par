@@ -1,0 +1,77 @@
+[0]:13717 srpmpi.c:152 finalize(): -----
+[0]:13717 srpmpi.c:153 finalize(): uloha:
+[0]:13717 srpdump.c:119 dump_task(): n=6,k=21,q=6
+[0]:13717 srpdump.c:122 dump_task(): B:
+[0]:13717 srpdump.c:124 dump_task(): 1. 0:0
+[0]:13717 srpdump.c:124 dump_task(): 2. 1:0
+[0]:13717 srpdump.c:124 dump_task(): 3. 2:0
+[0]:13717 srpdump.c:124 dump_task(): 4. 3:0
+[0]:13717 srpdump.c:124 dump_task(): 5. 4:0
+[0]:13717 srpdump.c:124 dump_task(): 6. 5:0
+[0]:13717 srpdump.c:124 dump_task(): 7. 0:1
+[0]:13717 srpdump.c:124 dump_task(): 8. 1:1
+[0]:13717 srpdump.c:124 dump_task(): 9. 2:1
+[0]:13717 srpdump.c:124 dump_task(): 10. 3:1
+[0]:13717 srpdump.c:124 dump_task(): 11. 4:1
+[0]:13717 srpdump.c:124 dump_task(): 12. 0:2
+[0]:13717 srpdump.c:124 dump_task(): 13. 3:3
+[0]:13717 srpdump.c:124 dump_task(): 14. 2:2
+[0]:13717 srpdump.c:124 dump_task(): 15. 3:2
+[0]:13717 srpdump.c:124 dump_task(): 16. 0:3
+[0]:13717 srpdump.c:124 dump_task(): 17. 2:5
+[0]:13717 srpdump.c:124 dump_task(): 18. 4:4
+[0]:13717 srpdump.c:124 dump_task(): 19. 0:4
+[0]:13717 srpdump.c:124 dump_task(): 20. 1:4
+[0]:13717 srpdump.c:124 dump_task(): 21. 1:3
+[0]:13717 srpdump.c:128 dump_task(): S:
+[0]:13717 srpdump.c:159 dump_board(): ######
+[0]:13717 srpdump.c:159 dump_board(): #####.
+[0]:13717 srpdump.c:159 dump_board(): #.##..
+[0]:13717 srpdump.c:159 dump_board(): ##.#..
+[0]:13717 srpdump.c:159 dump_board(): ##..#.
+[0]:13717 srpdump.c:159 dump_board(): ..#...
+[0]:13717 srpdump.c:132 dump_task(): P:
+[0]:13717 srpdump.c:137 dump_task(): 0:0=5
+[0]:13717 srpdump.c:137 dump_task(): 1:0=2
+[0]:13717 srpdump.c:137 dump_task(): 2:0=0
+[0]:13717 srpdump.c:137 dump_task(): 3:0=5
+[0]:13717 srpdump.c:137 dump_task(): 4:0=4
+[0]:13717 srpdump.c:137 dump_task(): 5:0=2
+[0]:13717 srpdump.c:137 dump_task(): 0:1=9
+[0]:13717 srpdump.c:137 dump_task(): 1:1=0
+[0]:13717 srpdump.c:137 dump_task(): 2:1=5
+[0]:13717 srpdump.c:137 dump_task(): 3:1=3
+[0]:13717 srpdump.c:137 dump_task(): 4:1=9
+[0]:13717 srpdump.c:137 dump_task(): 5:1=7
+[0]:13717 srpdump.c:137 dump_task(): 0:2=7
+[0]:13717 srpdump.c:137 dump_task(): 1:2=5
+[0]:13717 srpdump.c:137 dump_task(): 2:2=1
+[0]:13717 srpdump.c:137 dump_task(): 3:2=7
+[0]:13717 srpdump.c:137 dump_task(): 4:2=9
+[0]:13717 srpdump.c:137 dump_task(): 5:2=7
+[0]:13717 srpdump.c:137 dump_task(): 0:3=4
+[0]:13717 srpdump.c:137 dump_task(): 1:3=7
+[0]:13717 srpdump.c:137 dump_task(): 2:3=8
+[0]:13717 srpdump.c:137 dump_task(): 3:3=5
+[0]:13717 srpdump.c:137 dump_task(): 4:3=2
+[0]:13717 srpdump.c:137 dump_task(): 5:3=8
+[0]:13717 srpdump.c:137 dump_task(): 0:4=8
+[0]:13717 srpdump.c:137 dump_task(): 1:4=5
+[0]:13717 srpdump.c:137 dump_task(): 2:4=8
+[0]:13717 srpdump.c:137 dump_task(): 3:4=0
+[0]:13717 srpdump.c:137 dump_task(): 4:4=3
+[0]:13717 srpdump.c:137 dump_task(): 5:4=5
+[0]:13717 srpdump.c:137 dump_task(): 0:5=0
+[0]:13717 srpdump.c:137 dump_task(): 1:5=6
+[0]:13717 srpdump.c:137 dump_task(): 2:5=7
+[0]:13717 srpdump.c:137 dump_task(): 3:5=3
+[0]:13717 srpdump.c:137 dump_task(): 4:5=8
+[0]:13717 srpdump.c:137 dump_task(): 5:5=3
+[9]:13726 srpmpi.c:164 finalize(): prohledano stavu: 4540213 (orezano: 4417437)
+[9]:13726 srpmpi.c:169 finalize(): reseni nalezeno p=20
+[9]:13726 srpdump.c:171 dump_hist(): historie tahu:
+[9]:13726 srpdump.c:181 dump_hist(): 1. 1:3->0:5
+[9]:13726 srpdump.c:181 dump_hist(): 2. 3:3->1:2
+[9]:13726 srpdump.c:181 dump_hist(): 3. 2:5->1:3
+[9]:13726 srpdump.c:181 dump_hist(): 4. 4:4->2:3
+[9]:13726 srpmpi.c:173 finalize(): cas: 8.514845s

@@ -8,10 +8,10 @@ set ylabel "Zrychlení [-]"
 set xtics (1, 2, 4, 8, 16, 24, 32)
 set key top left
 
-set style line 1 lt 3 lc 1 pt 2
-set style line 2 lt 3 lc 2 pt 2
-set style line 3 lt 3 lc 3 pt 2
-set style line 4 lt 3 lc 4 pt 2
+set style line 1 lt 1 lc 1 pt 2
+set style line 2 lt 1 lc 2 pt 2
+set style line 3 lt 1 lc 3 pt 2
+set style line 4 lt 1 lc 4 pt 2
 
 plot \
 	"./time_inf.dat" using 1:(0.110000/$2) ls 1 title 'inst1-5-5-5' with linespoints, \
